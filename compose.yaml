@@ -1,0 +1,25 @@
+name: gestor-gmap-dev
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: gestor-gmap-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-gestor_gmap}
+      POSTGRES_USER: ${POSTGRES_USER:-gestor_gmap}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gestor_gmap_dev_password}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-55432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
