@@ -1,0 +1,8 @@
+.next/
+node_modules/
+out/
+coverage/
+package-lock.json
+*.tsbuildinfo
+AGENTS.md
+docs/specs/

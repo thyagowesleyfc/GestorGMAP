@@ -5,7 +5,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "GESTOR GMAP",
-  description: "Shell inicial do GESTOR GMAP.",
+  description: "Shell inicial do GESTOR GMAP."
 };
 
 type RootLayoutProps = {
