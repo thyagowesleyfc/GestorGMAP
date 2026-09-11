@@ -1,0 +1,146 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "GESTOR GMAP API",
+    "version": "0.1.0",
+    "description": "Contrato inicial dos endpoints técnicos da Fase 0."
+  },
+  "servers": [
+    {
+      "url": "http://127.0.0.1:3000",
+      "description": "Ambiente local de desenvolvimento"
+    }
+  ],
+  "paths": {
+    "/api/health": {
+      "get": {
+        "operationId": "getHealth",
+        "summary": "Verifica se a aplicacao esta respondendo",
+        "tags": ["Operacao"],
+        "responses": {
+          "200": {
+            "description": "Aplicacao respondendo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthPayload"
+                },
+                "examples": {
+                  "ok": {
+                    "value": {
+                      "service": "gestor-gmap",
+                      "status": "ok",
+                      "timestamp": "2026-09-11T12:00:00.000Z"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/ready": {
+      "get": {
+        "operationId": "getReadiness",
+        "summary": "Verifica se a aplicacao esta pronta para receber trafego",
+        "tags": ["Operacao"],
+        "responses": {
+          "200": {
+            "description": "Aplicacao pronta e banco de dados disponivel.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessPayload"
+                },
+                "examples": {
+                  "ok": {
+                    "value": {
+                      "service": "gestor-gmap",
+                      "status": "ok",
+                      "timestamp": "2026-09-11T12:00:00.000Z",
+                      "dependencies": {
+                        "database": "ok"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Aplicacao indisponivel por falha em dependencia obrigatoria.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessPayload"
+                },
+                "examples": {
+                  "databaseError": {
+                    "value": {
+                      "service": "gestor-gmap",
+                      "status": "error",
+                      "timestamp": "2026-09-11T12:00:00.000Z",
+                      "dependencies": {
+                        "database": "error"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "HealthPayload": {
+        "type": "object",
+        "required": ["service", "status", "timestamp"],
+        "properties": {
+          "service": {
+            "type": "string",
+            "const": "gestor-gmap"
+          },
+          "status": {
+            "$ref": "#/components/schemas/HealthStatus"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ReadinessPayload": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/HealthPayload"
+          },
+          {
+            "type": "object",
+            "required": ["dependencies"],
+            "properties": {
+              "dependencies": {
+                "type": "object",
+                "required": ["database"],
+                "properties": {
+                  "database": {
+                    "$ref": "#/components/schemas/HealthStatus"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        ]
+      },
+      "HealthStatus": {
+        "type": "string",
+        "enum": ["ok", "error"]
+      }
+    }
+  }
+}
