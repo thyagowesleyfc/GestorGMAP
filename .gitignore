@@ -10,3 +10,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 *.tsbuildinfo
+test-results/
+playwright-report/
+blob-report/

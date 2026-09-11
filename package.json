@@ -22,6 +22,7 @@
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "test:integration": "vitest run --config vitest.integration.config.mts",
     "typecheck": "tsc --noEmit"
   },
@@ -32,6 +33,7 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.63.0",
     "@tailwindcss/postcss": "4.3.3",
     "@testcontainers/postgresql": "12.1.0",
     "@types/node": "22.20.2",

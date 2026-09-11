@@ -6,3 +6,6 @@ package-lock.json
 *.tsbuildinfo
 AGENTS.md
 docs/specs/
+test-results/
+playwright-report/
+blob-report/
