@@ -32,6 +32,7 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
     "@testcontainers/postgresql": "12.1.0",
     "@types/node": "22.20.2",
     "@types/pg": "8.23.1",
@@ -42,6 +43,7 @@
     "pg": "8.23.0",
     "prettier": "3.9.6",
     "prisma": "6.12.0",
+    "tailwindcss": "4.3.3",
     "testcontainers": "12.1.0",
     "typescript": "6.0.3",
     "vitest": "5.0.0"
