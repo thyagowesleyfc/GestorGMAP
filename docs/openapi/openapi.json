@@ -3,7 +3,7 @@
   "info": {
     "title": "GESTOR GMAP API",
     "version": "0.1.0",
-    "description": "Contrato inicial dos endpoints técnicos da Fase 0."
+    "description": "Contrato inicial dos endpoints tecnicos da Fase 0."
   },
   "servers": [
     {
@@ -20,6 +20,11 @@
         "responses": {
           "200": {
             "description": "Aplicacao respondendo.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -31,6 +36,29 @@
                       "service": "gestor-gmap",
                       "status": "ok",
                       "timestamp": "2026-09-11T12:00:00.000Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro tecnico inesperado. A resposta nao expoe detalhe interno.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorPayload"
+                },
+                "examples": {
+                  "internalError": {
+                    "value": {
+                      "error": "Erro interno do servidor.",
+                      "correlation_id": "019a0000-0000-7000-8000-000000000000"
                     }
                   }
                 }
@@ -48,6 +76,11 @@
         "responses": {
           "200": {
             "description": "Aplicacao pronta e banco de dados disponivel.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -68,8 +101,36 @@
               }
             }
           },
+          "500": {
+            "description": "Erro tecnico inesperado. A resposta nao expoe detalhe interno.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorPayload"
+                },
+                "examples": {
+                  "internalError": {
+                    "value": {
+                      "error": "Erro interno do servidor.",
+                      "correlation_id": "019a0000-0000-7000-8000-000000000000"
+                    }
+                  }
+                }
+              }
+            }
+          },
           "503": {
             "description": "Aplicacao indisponivel por falha em dependencia obrigatoria.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
             "content": {
               "application/json": {
                 "schema": {
@@ -95,6 +156,16 @@
     }
   },
   "components": {
+    "headers": {
+      "CorrelationId": {
+        "description": "Identificador de correlacao retornado tambem no log estruturado.",
+        "schema": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      }
+    },
     "schemas": {
       "HealthPayload": {
         "type": "object",
@@ -140,6 +211,21 @@
       "HealthStatus": {
         "type": "string",
         "enum": ["ok", "error"]
+      },
+      "ErrorPayload": {
+        "type": "object",
+        "required": ["error", "correlation_id"],
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "correlation_id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "additionalProperties": false
       }
     }
   }
