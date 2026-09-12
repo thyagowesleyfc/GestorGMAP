@@ -6,3 +6,71 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum MembershipRole {
+  MEMBRO
+  LIDER
+}
+
+enum ScopeType {
+  GLOBAL
+  GRE
+}
+
+model Person {
+  id          String        @id @default(uuid()) @db.Uuid
+  displayName String        @map("display_name") @db.VarChar(160)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  users       UserAccount[]
+
+  @@map("person")
+}
+
+model UserAccount {
+  id                   String           @id @default(uuid()) @db.Uuid
+  personId             String           @unique @map("person_id") @db.Uuid
+  status               UserStatus       @default(ACTIVE)
+  isTechnicalSuperuser Boolean          @default(false) @map("is_technical_superuser")
+  createdAt            DateTime         @default(now()) @map("created_at")
+  updatedAt            DateTime         @updatedAt @map("updated_at")
+  person               Person           @relation(fields: [personId], references: [id], onDelete: Restrict)
+  memberships          TeamMembership[]
+
+  @@index([personId])
+  @@map("user_account")
+}
+
+model Team {
+  id          String           @id @default(uuid()) @db.Uuid
+  name        String           @unique @db.VarChar(120)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  memberships TeamMembership[]
+
+  @@map("team")
+}
+
+model TeamMembership {
+  id        String         @id @default(uuid()) @db.Uuid
+  userId    String         @map("user_id") @db.Uuid
+  teamId    String         @map("team_id") @db.Uuid
+  role      MembershipRole
+  scopeType ScopeType      @map("scope_type")
+  greCode   String?        @map("gre_code") @db.VarChar(32)
+  active    Boolean        @default(true)
+  createdAt DateTime       @default(now()) @map("created_at")
+  updatedAt DateTime       @updatedAt @map("updated_at")
+  user      UserAccount    @relation(fields: [userId], references: [id], onDelete: Restrict)
+  team      Team           @relation(fields: [teamId], references: [id], onDelete: Restrict)
+
+  @@index([teamId])
+  @@index([userId])
+  @@index([scopeType, greCode])
+  @@map("team_membership")
+}
