@@ -33,17 +33,30 @@ model Person {
 }
 
 model UserAccount {
-  id                   String           @id @default(uuid()) @db.Uuid
-  personId             String           @unique @map("person_id") @db.Uuid
-  status               UserStatus       @default(ACTIVE)
-  isTechnicalSuperuser Boolean          @default(false) @map("is_technical_superuser")
-  createdAt            DateTime         @default(now()) @map("created_at")
-  updatedAt            DateTime         @updatedAt @map("updated_at")
-  person               Person           @relation(fields: [personId], references: [id], onDelete: Restrict)
+  id                   String              @id @default(uuid()) @db.Uuid
+  personId             String              @unique @map("person_id") @db.Uuid
+  status               UserStatus          @default(ACTIVE)
+  isTechnicalSuperuser Boolean             @default(false) @map("is_technical_superuser")
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+  person               Person              @relation(fields: [personId], references: [id], onDelete: Restrict)
   memberships          TeamMembership[]
+  passwordCredential   PasswordCredential?
 
   @@index([personId])
   @@map("user_account")
+}
+
+model PasswordCredential {
+  id                String      @id @default(uuid()) @db.Uuid
+  userId            String      @unique @map("user_id") @db.Uuid
+  passwordHash      String      @map("password_hash") @db.Text
+  passwordUpdatedAt DateTime    @default(now()) @map("password_updated_at")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+  user              UserAccount @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@map("password_credential")
 }
 
 model Team {
