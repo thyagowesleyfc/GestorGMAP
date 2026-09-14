@@ -39,6 +39,7 @@ describe("OpenAPI contract", () => {
       "/api/auth/login",
       "/api/auth/logout",
       "/api/auth/session",
+      "/api/auth/sessions",
       "/api/health",
       "/api/ready"
     ]);
@@ -55,6 +56,8 @@ describe("OpenAPI contract", () => {
     expect(document.components.schemas).toHaveProperty("AuthSessionPayload");
     expect(document.components.schemas).toHaveProperty("AuthMembership");
     expect(document.components.schemas).toHaveProperty("AuthScope");
+    expect(document.components.schemas).toHaveProperty("ActiveSessionsPayload");
+    expect(document.components.schemas).toHaveProperty("ActiveSessionItem");
     expect(document.components.schemas).toHaveProperty("OkPayload");
     expect(document.components.schemas).toHaveProperty("SimpleErrorPayload");
     expect(document.components.schemas).toHaveProperty("ErrorPayload");
@@ -100,6 +103,12 @@ describe("OpenAPI contract", () => {
     expect(document.paths["/api/auth/session"].get?.responses["401"].headers).toHaveProperty(
       "X-Correlation-Id"
     );
+    expect(document.paths["/api/auth/sessions"].get?.responses["200"].headers).toHaveProperty(
+      "X-Correlation-Id"
+    );
+    expect(document.paths["/api/auth/sessions"].get?.responses["401"].headers).toHaveProperty(
+      "X-Correlation-Id"
+    );
   });
 
   it("documents auth cookie and retry headers without exposing the session token schema", () => {
@@ -107,12 +116,14 @@ describe("OpenAPI contract", () => {
     const loginResponses = document.paths["/api/auth/login"].post?.responses;
     const logoutResponses = document.paths["/api/auth/logout"].post?.responses;
     const sessionResponses = document.paths["/api/auth/session"].get?.responses;
+    const sessionsResponses = document.paths["/api/auth/sessions"].get?.responses;
 
     expect(document.components.headers).toHaveProperty("SessionCookie");
     expect(document.components.headers).toHaveProperty("RetryAfter");
     expect(loginResponses?.["200"].headers).toHaveProperty("Set-Cookie");
     expect(logoutResponses?.["200"].headers).toHaveProperty("Set-Cookie");
     expect(sessionResponses?.["401"].headers).toHaveProperty("Set-Cookie");
+    expect(sessionsResponses?.["401"].headers).toHaveProperty("Set-Cookie");
     expect(loginResponses?.["429"].headers).toHaveProperty("Retry-After");
     expect(JSON.stringify(document.components.schemas.LoginSuccessPayload)).not.toContain("token");
     expect(JSON.stringify(document.components.schemas.LoginSuccessPayload)).not.toContain(
@@ -120,6 +131,12 @@ describe("OpenAPI contract", () => {
     );
     expect(JSON.stringify(document.components.schemas.AuthSessionPayload)).not.toContain("token");
     expect(JSON.stringify(document.components.schemas.AuthSessionPayload)).not.toContain(
+      "session_id"
+    );
+    expect(JSON.stringify(document.components.schemas.ActiveSessionsPayload)).not.toContain(
+      "token"
+    );
+    expect(JSON.stringify(document.components.schemas.ActiveSessionsPayload)).not.toContain(
       "session_id"
     );
   });

@@ -429,6 +429,87 @@
           }
         }
       }
+    },
+    "/api/auth/sessions": {
+      "get": {
+        "operationId": "getAuthSessions",
+        "summary": "Lista as sessoes ativas do usuario autenticado",
+        "tags": ["Autenticacao"],
+        "responses": {
+          "200": {
+            "description": "Sessoes ativas do usuario autenticado. A resposta nao inclui tokens de sessao.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActiveSessionsPayload"
+                },
+                "examples": {
+                  "sessions": {
+                    "value": {
+                      "sessions": [
+                        {
+                          "id": "019a0000-0000-7000-8000-000000000001",
+                          "current": true,
+                          "user_agent": "Mozilla/5.0",
+                          "ip_address": "203.0.113.10",
+                          "expires_at": "2026-09-14T20:00:00.000Z",
+                          "last_seen_at": "2026-09-14T12:00:00.000Z",
+                          "created_at": "2026-09-14T11:00:00.000Z"
+                        }
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessao ausente, expirada, revogada ou usuario sem acesso ativo.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              },
+              "Set-Cookie": {
+                "$ref": "#/components/headers/SessionCookie"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleErrorPayload"
+                },
+                "examples": {
+                  "unauthenticated": {
+                    "value": {
+                      "error": "Sessao nao autenticada."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro tecnico inesperado. A resposta nao expoe detalhe interno.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorPayload"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -663,6 +744,61 @@
               }
             },
             "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "ActiveSessionItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "current",
+          "user_agent",
+          "ip_address",
+          "expires_at",
+          "last_seen_at",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "current": {
+            "type": "boolean"
+          },
+          "user_agent": {
+            "type": ["string", "null"],
+            "maxLength": 512
+          },
+          "ip_address": {
+            "type": ["string", "null"],
+            "maxLength": 64
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "last_seen_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ActiveSessionsPayload": {
+        "type": "object",
+        "required": ["sessions"],
+        "properties": {
+          "sessions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ActiveSessionItem"
+            }
           }
         },
         "additionalProperties": false
