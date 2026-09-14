@@ -227,7 +227,7 @@
             }
           },
           "401": {
-            "description": "Credenciais invalidas ou usuario sem acesso ativo.",
+            "description": "Credenciais inv\u00e1lidas ou usu\u00e1rio sem acesso ativo.",
             "headers": {
               "X-Correlation-Id": {
                 "$ref": "#/components/headers/CorrelationId"
@@ -241,7 +241,7 @@
                 "examples": {
                   "invalidCredentials": {
                     "value": {
-                      "error": "Credenciais invalidas."
+                      "error": "Credenciais inv\u00e1lidas."
                     }
                   }
                 }

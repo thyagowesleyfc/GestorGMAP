@@ -117,7 +117,7 @@ describe("handleLoginRequest", () => {
       );
 
       await expect(response.json()).resolves.toEqual({
-        error: "Credenciais invalidas."
+        error: "Credenciais inv\u00e1lidas."
       });
       expect(response.status).toBe(401);
       expect(response.headers.get("set-cookie")).toBeNull();

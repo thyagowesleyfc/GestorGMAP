@@ -115,7 +115,7 @@ export async function handleLoginRequest(
   });
 
   if (!result.ok) {
-    return jsonError("Credenciais invalidas.", 401);
+    return jsonError("Credenciais inv\u00e1lidas.", 401);
   }
 
   dependencies.rateLimiter.reset(rateLimitIdentity);
