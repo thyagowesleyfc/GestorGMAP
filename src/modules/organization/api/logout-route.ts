@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 
 import {
   buildExpiredSessionCookie,
-  SESSION_COOKIE_NAME,
   type RuntimeEnvironment
 } from "../infrastructure/session/session-cookie";
+import { readSessionTokenFromCookie } from "./session-cookie-reader";
 
 export type SessionRevoker = {
   revokeByToken(token: string, revokedAt?: Date): Promise<number>;
@@ -15,35 +15,6 @@ export type LogoutRouteDependencies = {
   environment?: RuntimeEnvironment;
   now?: () => Date;
 };
-
-function readSessionTokenFromCookie(headers: Headers): string | null {
-  const cookieHeader = headers.get("cookie");
-
-  if (cookieHeader === null) {
-    return null;
-  }
-
-  const cookies = cookieHeader.split(";");
-
-  for (const cookie of cookies) {
-    const separatorIndex = cookie.indexOf("=");
-
-    if (separatorIndex === -1) {
-      continue;
-    }
-
-    const name = cookie.slice(0, separatorIndex).trim();
-
-    if (name !== SESSION_COOKIE_NAME) {
-      continue;
-    }
-
-    const value = cookie.slice(separatorIndex + 1).trim();
-    return value ? decodeURIComponent(value) : null;
-  }
-
-  return null;
-}
 
 export async function handleLogoutRequest(
   request: Request,

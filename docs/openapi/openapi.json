@@ -339,6 +339,96 @@
           }
         }
       }
+    },
+    "/api/auth/session": {
+      "get": {
+        "operationId": "getAuthSession",
+        "summary": "Consulta a sessao autenticada atual",
+        "tags": ["Autenticacao"],
+        "responses": {
+          "200": {
+            "description": "Sessao autenticada encontrada. A resposta nao inclui token de sessao.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthSessionPayload"
+                },
+                "examples": {
+                  "authenticated": {
+                    "value": {
+                      "authenticated": true,
+                      "user": {
+                        "id": "019a0000-0000-7000-8000-000000000001",
+                        "person_id": "019a0000-0000-7000-8000-000000000002",
+                        "is_technical_superuser": false
+                      },
+                      "memberships": [
+                        {
+                          "id": "019a0000-0000-7000-8000-000000000003",
+                          "team_id": "019a0000-0000-7000-8000-000000000004",
+                          "role": "MEMBRO",
+                          "scope": {
+                            "type": "GRE",
+                            "gre_code": "GRE-01"
+                          }
+                        }
+                      ],
+                      "session": {
+                        "expires_at": "2026-09-14T20:00:00.000Z"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessao ausente, expirada, revogada ou usuario sem acesso ativo.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              },
+              "Set-Cookie": {
+                "$ref": "#/components/headers/SessionCookie"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleErrorPayload"
+                },
+                "examples": {
+                  "unauthenticated": {
+                    "value": {
+                      "error": "Sessao nao autenticada."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro tecnico inesperado. A resposta nao expoe detalhe interno.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorPayload"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -474,6 +564,105 @@
           "ok": {
             "type": "boolean",
             "const": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "AuthScope": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["type"],
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "GLOBAL"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": ["type", "gre_code"],
+            "properties": {
+              "type": {
+                "type": "string",
+                "const": "GRE"
+              },
+              "gre_code": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "AuthMembership": {
+        "type": "object",
+        "required": ["id", "team_id", "role", "scope"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "team_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["MEMBRO", "LIDER"]
+          },
+          "scope": {
+            "$ref": "#/components/schemas/AuthScope"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AuthSessionPayload": {
+        "type": "object",
+        "required": ["authenticated", "user", "memberships", "session"],
+        "properties": {
+          "authenticated": {
+            "type": "boolean",
+            "const": true
+          },
+          "user": {
+            "type": "object",
+            "required": ["id", "person_id", "is_technical_superuser"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "person_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "is_technical_superuser": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          "memberships": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuthMembership"
+            }
+          },
+          "session": {
+            "type": "object",
+            "required": ["expires_at"],
+            "properties": {
+              "expires_at": {
+                "type": "string",
+                "format": "date-time"
+              }
+            },
+            "additionalProperties": false
           }
         },
         "additionalProperties": false
