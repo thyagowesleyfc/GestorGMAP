@@ -290,6 +290,55 @@
           }
         }
       }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "postAuthLogout",
+        "summary": "Encerra a sessao atual",
+        "tags": ["Autenticacao"],
+        "responses": {
+          "200": {
+            "description": "Logout processado. O cookie de sessao e expirado mesmo quando nao havia sessao ativa.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              },
+              "Set-Cookie": {
+                "$ref": "#/components/headers/SessionCookie"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkPayload"
+                },
+                "examples": {
+                  "ok": {
+                    "value": {
+                      "ok": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro tecnico inesperado. A resposta nao expoe detalhe interno.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorPayload"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -414,6 +463,17 @@
         "properties": {
           "error": {
             "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "OkPayload": {
+        "type": "object",
+        "required": ["ok"],
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true
           }
         },
         "additionalProperties": false

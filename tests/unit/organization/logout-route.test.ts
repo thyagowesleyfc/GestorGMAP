@@ -1,0 +1,63 @@
+import { describe, expect, it, vi } from "vitest";
+
+import { handleLogoutRequest } from "../../../src/modules/organization/api/logout-route";
+
+function request(cookie?: string): Request {
+  return new Request("http://localhost/api/auth/logout", {
+    headers: cookie === undefined ? undefined : { cookie },
+    method: "POST"
+  });
+}
+
+function makeDependencies() {
+  return {
+    environment: "test" as const,
+    now: () => new Date("2026-09-14T12:00:00.000Z"),
+    sessions: {
+      revokeByToken: vi.fn().mockResolvedValue(1)
+    }
+  };
+}
+
+describe("handleLogoutRequest", () => {
+  it("revokes the session token from the cookie and expires the session cookie", async () => {
+    const dependencies = makeDependencies();
+
+    const response = await handleLogoutRequest(
+      request("other=value; gmap_session=raw-session-token; theme=light"),
+      dependencies
+    );
+
+    await expect(response.json()).resolves.toEqual({ ok: true });
+    expect(response.status).toBe(200);
+    expect(dependencies.sessions.revokeByToken).toHaveBeenCalledWith(
+      "raw-session-token",
+      new Date("2026-09-14T12:00:00.000Z")
+    );
+    expect(response.headers.get("set-cookie")).toContain("gmap_session=");
+    expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
+    expect(response.headers.get("set-cookie")).toContain("HttpOnly");
+    expect(response.headers.get("set-cookie")).toContain("SameSite=lax");
+  });
+
+  it("expires the cookie even when there is no session cookie", async () => {
+    const dependencies = makeDependencies();
+
+    const response = await handleLogoutRequest(request(), dependencies);
+
+    await expect(response.json()).resolves.toEqual({ ok: true });
+    expect(dependencies.sessions.revokeByToken).not.toHaveBeenCalled();
+    expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
+  });
+
+  it("decodes encoded session tokens from the cookie", async () => {
+    const dependencies = makeDependencies();
+
+    await handleLogoutRequest(request("gmap_session=raw%3Asession%3Atoken"), dependencies);
+
+    expect(dependencies.sessions.revokeByToken).toHaveBeenCalledWith(
+      "raw:session:token",
+      new Date("2026-09-14T12:00:00.000Z")
+    );
+  });
+});
