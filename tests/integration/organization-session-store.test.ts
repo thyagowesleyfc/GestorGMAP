@@ -48,7 +48,8 @@ describe("PrismaSessionStore", () => {
       });
       const user = await prisma.userAccount.create({
         data: {
-          personId: person.id
+          personId: person.id,
+          loginIdentifier: "pessoa.teste"
         }
       });
       const store = new PrismaSessionStore(prisma);

@@ -35,6 +35,7 @@ model Person {
 model UserAccount {
   id                   String              @id @default(uuid()) @db.Uuid
   personId             String              @unique @map("person_id") @db.Uuid
+  loginIdentifier      String              @unique @map("login_identifier") @db.VarChar(160)
   status               UserStatus          @default(ACTIVE)
   isTechnicalSuperuser Boolean             @default(false) @map("is_technical_superuser")
   createdAt            DateTime            @default(now()) @map("created_at")

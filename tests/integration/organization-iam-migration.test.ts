@@ -28,6 +28,17 @@ describe("organization IAM migration", () => {
     const databaseUrl = postgres.getConnectionUri();
     const client = new Client({ connectionString: databaseUrl });
 
+    async function createPerson(displayName: string): Promise<string> {
+      const personId = randomUUID();
+
+      await client.query(
+        `insert into "person" ("id", "display_name", "updated_at") values ($1, $2, current_timestamp)`,
+        [personId, displayName]
+      );
+
+      return personId;
+    }
+
     try {
       await runPrismaMigrateDeploy(databaseUrl);
       await client.connect();
@@ -64,6 +75,7 @@ describe("organization IAM migration", () => {
             'person_display_name_not_blank',
             'team_name_not_blank',
             'team_membership_scope_consistency',
+            'user_account_login_identifier_normalized',
             'user_session_expires_after_created',
             'user_session_revoked_after_created',
             'user_session_token_hash_not_blank'
@@ -76,32 +88,29 @@ describe("organization IAM migration", () => {
         "person_display_name_not_blank",
         "team_membership_scope_consistency",
         "team_name_not_blank",
+        "user_account_login_identifier_normalized",
         "user_session_expires_after_created",
         "user_session_revoked_after_created",
         "user_session_token_hash_not_blank"
       ]);
 
-      const personId = randomUUID();
+      const personId = await createPerson("Pessoa Teste");
+      const secondPersonId = await createPerson("Pessoa Sem Credencial");
       const userId = randomUUID();
-      const secondPersonId = randomUUID();
       const secondUserId = randomUUID();
       const teamId = randomUUID();
 
       await client.query(
-        `insert into "person" ("id", "display_name", "updated_at") values ($1, $2, current_timestamp)`,
-        [personId, "Pessoa Teste"]
+        `insert into "user_account" (
+          "id", "person_id", "login_identifier", "updated_at"
+        ) values ($1, $2, $3, current_timestamp)`,
+        [userId, personId, "pessoa.teste"]
       );
       await client.query(
-        `insert into "person" ("id", "display_name", "updated_at") values ($1, $2, current_timestamp)`,
-        [secondPersonId, "Pessoa Sem Credencial"]
-      );
-      await client.query(
-        `insert into "user_account" ("id", "person_id", "updated_at") values ($1, $2, current_timestamp)`,
-        [userId, personId]
-      );
-      await client.query(
-        `insert into "user_account" ("id", "person_id", "updated_at") values ($1, $2, current_timestamp)`,
-        [secondUserId, secondPersonId]
+        `insert into "user_account" (
+          "id", "person_id", "login_identifier", "updated_at"
+        ) values ($1, $2, $3, current_timestamp)`,
+        [secondUserId, secondPersonId, "pessoa.sem.credencial"]
       );
       await client.query(
         `insert into "password_credential" (
@@ -142,6 +151,7 @@ describe("organization IAM migration", () => {
         "sha256:token-hash-dois",
         "sha256:token-hash-um"
       ]);
+
       await client.query(
         `insert into "team" ("id", "name", "updated_at") values ($1, $2, current_timestamp)`,
         [teamId, "Equipe Teste"]
@@ -152,6 +162,33 @@ describe("organization IAM migration", () => {
         ) values ($1, $2, $3, 'MEMBRO', 'GRE', 'GRE-01', current_timestamp)`,
         [randomUUID(), userId, teamId]
       );
+
+      await expect(
+        client.query(
+          `insert into "user_account" (
+            "id", "person_id", "login_identifier", "updated_at"
+          ) values ($1, $2, $3, current_timestamp)`,
+          [randomUUID(), await createPerson("Pessoa Login Duplicado"), "pessoa.teste"]
+        )
+      ).rejects.toThrow(/user_account_login_identifier_key/);
+
+      await expect(
+        client.query(
+          `insert into "user_account" (
+            "id", "person_id", "login_identifier", "updated_at"
+          ) values ($1, $2, $3, current_timestamp)`,
+          [randomUUID(), await createPerson("Pessoa Login Maiusculo"), "Pessoa.Teste"]
+        )
+      ).rejects.toThrow(/user_account_login_identifier_normalized/);
+
+      await expect(
+        client.query(
+          `insert into "user_account" (
+            "id", "person_id", "login_identifier", "updated_at"
+          ) values ($1, $2, $3, current_timestamp)`,
+          [randomUUID(), await createPerson("Pessoa Login Vazio"), "  "]
+        )
+      ).rejects.toThrow(/user_account_login_identifier_normalized/);
 
       await expect(
         client.query(
