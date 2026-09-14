@@ -3,7 +3,7 @@
   "info": {
     "title": "GESTOR GMAP API",
     "version": "0.1.0",
-    "description": "Contrato inicial dos endpoints tecnicos da Fase 0."
+    "description": "Contrato dos endpoints implementados do GESTOR GMAP."
   },
   "servers": [
     {
@@ -153,6 +153,143 @@
           }
         }
       }
+    },
+    "/api/auth/login": {
+      "post": {
+        "operationId": "postAuthLogin",
+        "summary": "Autentica usuario e cria sessao server-side",
+        "tags": ["Autenticacao"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              },
+              "examples": {
+                "credentials": {
+                  "value": {
+                    "loginIdentifier": "usuario.gmap",
+                    "password": "SenhaForte123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login realizado. O token de sessao e enviado somente por cookie HttpOnly.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              },
+              "Set-Cookie": {
+                "$ref": "#/components/headers/SessionCookie"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginSuccessPayload"
+                },
+                "examples": {
+                  "ok": {
+                    "value": {
+                      "ok": true,
+                      "expires_at": "2026-09-14T20:00:00.000Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisicao invalida.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleErrorPayload"
+                },
+                "examples": {
+                  "invalidPayload": {
+                    "value": {
+                      "error": "Informe identificador de login e senha."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Credenciais invalidas ou usuario sem acesso ativo.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleErrorPayload"
+                },
+                "examples": {
+                  "invalidCredentials": {
+                    "value": {
+                      "error": "Credenciais invalidas."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas tentativas de login em uma janela curta.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleErrorPayload"
+                },
+                "examples": {
+                  "rateLimited": {
+                    "value": {
+                      "error": "Muitas tentativas de login. Tente novamente mais tarde."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro tecnico inesperado. A resposta nao expoe detalhe interno.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorPayload"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -163,6 +300,19 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 128
+        }
+      },
+      "SessionCookie": {
+        "description": "Cookie HttpOnly contendo o token opaco da sessao.",
+        "schema": {
+          "type": "string"
+        }
+      },
+      "RetryAfter": {
+        "description": "Tempo em segundos para nova tentativa de login.",
+        "schema": {
+          "type": "integer",
+          "minimum": 1
         }
       }
     },
@@ -223,6 +373,47 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 128
+          }
+        },
+        "additionalProperties": false
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": ["loginIdentifier", "password"],
+        "properties": {
+          "loginIdentifier": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "LoginSuccessPayload": {
+        "type": "object",
+        "required": ["ok", "expires_at"],
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SimpleErrorPayload": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "string"
           }
         },
         "additionalProperties": false
