@@ -42,6 +42,7 @@ model UserAccount {
   person               Person              @relation(fields: [personId], references: [id], onDelete: Restrict)
   memberships          TeamMembership[]
   passwordCredential   PasswordCredential?
+  sessions             UserSession[]
 
   @@index([personId])
   @@map("user_account")
@@ -57,6 +58,25 @@ model PasswordCredential {
   user              UserAccount @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@map("password_credential")
+}
+
+model UserSession {
+  id               String      @id @default(uuid()) @db.Uuid
+  userId           String      @map("user_id") @db.Uuid
+  sessionTokenHash String      @unique @map("session_token_hash") @db.Text
+  userAgent        String?     @map("user_agent") @db.VarChar(512)
+  ipAddress        String?     @map("ip_address") @db.VarChar(64)
+  expiresAt        DateTime    @map("expires_at")
+  revokedAt        DateTime?   @map("revoked_at")
+  lastSeenAt       DateTime    @default(now()) @map("last_seen_at")
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+  user             UserAccount @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([revokedAt])
+  @@map("user_session")
 }
 
 model Team {

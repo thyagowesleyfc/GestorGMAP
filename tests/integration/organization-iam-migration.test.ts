@@ -36,7 +36,14 @@ describe("organization IAM migration", () => {
         `select table_name
            from information_schema.tables
           where table_schema = 'public'
-            and table_name in ('person', 'password_credential', 'user_account', 'team', 'team_membership')
+            and table_name in (
+              'person',
+              'password_credential',
+              'user_account',
+              'user_session',
+              'team',
+              'team_membership'
+            )
           order by table_name`
       );
 
@@ -45,7 +52,8 @@ describe("organization IAM migration", () => {
         "person",
         "team",
         "team_membership",
-        "user_account"
+        "user_account",
+        "user_session"
       ]);
 
       const constraints = await client.query<{ conname: string }>(
@@ -55,7 +63,10 @@ describe("organization IAM migration", () => {
             'password_credential_hash_not_blank',
             'person_display_name_not_blank',
             'team_name_not_blank',
-            'team_membership_scope_consistency'
+            'team_membership_scope_consistency',
+            'user_session_expires_after_created',
+            'user_session_revoked_after_created',
+            'user_session_token_hash_not_blank'
           )
           order by conname`
       );
@@ -64,7 +75,10 @@ describe("organization IAM migration", () => {
         "password_credential_hash_not_blank",
         "person_display_name_not_blank",
         "team_membership_scope_consistency",
-        "team_name_not_blank"
+        "team_name_not_blank",
+        "user_session_expires_after_created",
+        "user_session_revoked_after_created",
+        "user_session_token_hash_not_blank"
       ]);
 
       const personId = randomUUID();
@@ -95,6 +109,39 @@ describe("organization IAM migration", () => {
         ) values ($1, $2, $3, current_timestamp)`,
         [randomUUID(), userId, "scrypt$v1$16384$8$1$c2FsdA==$aGFzaA=="]
       );
+      await client.query(
+        `insert into "user_session" (
+          "id", "user_id", "session_token_hash", "expires_at", "updated_at"
+        ) values ($1, $2, $3, current_timestamp + interval '1 day', current_timestamp)`,
+        [randomUUID(), userId, "sha256:token-hash-um"]
+      );
+      await client.query(
+        `insert into "user_session" (
+          "id", "user_id", "session_token_hash", "expires_at", "updated_at"
+        ) values ($1, $2, $3, current_timestamp + interval '1 day', current_timestamp)`,
+        [randomUUID(), userId, "sha256:token-hash-dois"]
+      );
+      await client.query(
+        `insert into "user_session" (
+          "id", "user_id", "session_token_hash", "expires_at", "revoked_at", "updated_at"
+        ) values ($1, $2, $3, current_timestamp + interval '1 day', current_timestamp, current_timestamp)`,
+        [randomUUID(), userId, "sha256:token-hash-revogado"]
+      );
+
+      const activeSessions = await client.query<{ session_token_hash: string }>(
+        `select "session_token_hash"
+           from "user_session"
+          where "user_id" = $1
+            and "revoked_at" is null
+            and "expires_at" > current_timestamp
+          order by "session_token_hash"`,
+        [userId]
+      );
+
+      expect(activeSessions.rows.map((row) => row.session_token_hash)).toEqual([
+        "sha256:token-hash-dois",
+        "sha256:token-hash-um"
+      ]);
       await client.query(
         `insert into "team" ("id", "name", "updated_at") values ($1, $2, current_timestamp)`,
         [teamId, "Equipe Teste"]
@@ -132,6 +179,42 @@ describe("organization IAM migration", () => {
           [randomUUID(), randomUUID(), "scrypt$v1$16384$8$1$c2FsdA==$aGFzaA=="]
         )
       ).rejects.toThrow(/password_credential_user_id_fkey/);
+
+      await expect(
+        client.query(
+          `insert into "user_session" (
+            "id", "user_id", "session_token_hash", "expires_at", "updated_at"
+          ) values ($1, $2, $3, current_timestamp + interval '1 day', current_timestamp)`,
+          [randomUUID(), userId, "sha256:token-hash-um"]
+        )
+      ).rejects.toThrow(/user_session_session_token_hash_key/);
+
+      await expect(
+        client.query(
+          `insert into "user_session" (
+            "id", "user_id", "session_token_hash", "expires_at", "updated_at"
+          ) values ($1, $2, $3, current_timestamp + interval '1 day', current_timestamp)`,
+          [randomUUID(), secondUserId, "  "]
+        )
+      ).rejects.toThrow(/user_session_token_hash_not_blank/);
+
+      await expect(
+        client.query(
+          `insert into "user_session" (
+            "id", "user_id", "session_token_hash", "expires_at", "updated_at"
+          ) values ($1, $2, $3, current_timestamp - interval '1 second', current_timestamp)`,
+          [randomUUID(), secondUserId, "sha256:expired-token-hash"]
+        )
+      ).rejects.toThrow(/user_session_expires_after_created/);
+
+      await expect(
+        client.query(
+          `insert into "user_session" (
+            "id", "user_id", "session_token_hash", "expires_at", "updated_at"
+          ) values ($1, $2, $3, current_timestamp + interval '1 day', current_timestamp)`,
+          [randomUUID(), randomUUID(), "sha256:unknown-user-token-hash"]
+        )
+      ).rejects.toThrow(/user_session_user_id_fkey/);
 
       await expect(
         client.query(
