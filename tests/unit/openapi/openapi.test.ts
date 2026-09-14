@@ -12,6 +12,7 @@ type OpenApiOperation = {
 };
 
 type OpenApiPath = {
+  delete?: OpenApiOperation;
   get?: OpenApiOperation;
   post?: OpenApiOperation;
 };
@@ -40,6 +41,7 @@ describe("OpenAPI contract", () => {
       "/api/auth/logout",
       "/api/auth/session",
       "/api/auth/sessions",
+      "/api/auth/sessions/{sessionId}",
       "/api/health",
       "/api/ready"
     ]);
@@ -109,6 +111,15 @@ describe("OpenAPI contract", () => {
     expect(document.paths["/api/auth/sessions"].get?.responses["401"].headers).toHaveProperty(
       "X-Correlation-Id"
     );
+    expect(
+      document.paths["/api/auth/sessions/{sessionId}"].delete?.responses["200"].headers
+    ).toHaveProperty("X-Correlation-Id");
+    expect(
+      document.paths["/api/auth/sessions/{sessionId}"].delete?.responses["401"].headers
+    ).toHaveProperty("X-Correlation-Id");
+    expect(
+      document.paths["/api/auth/sessions/{sessionId}"].delete?.responses["404"].headers
+    ).toHaveProperty("X-Correlation-Id");
   });
 
   it("documents auth cookie and retry headers without exposing the session token schema", () => {
@@ -117,6 +128,8 @@ describe("OpenAPI contract", () => {
     const logoutResponses = document.paths["/api/auth/logout"].post?.responses;
     const sessionResponses = document.paths["/api/auth/session"].get?.responses;
     const sessionsResponses = document.paths["/api/auth/sessions"].get?.responses;
+    const revokeSessionResponses =
+      document.paths["/api/auth/sessions/{sessionId}"].delete?.responses;
 
     expect(document.components.headers).toHaveProperty("SessionCookie");
     expect(document.components.headers).toHaveProperty("RetryAfter");
@@ -124,6 +137,8 @@ describe("OpenAPI contract", () => {
     expect(logoutResponses?.["200"].headers).toHaveProperty("Set-Cookie");
     expect(sessionResponses?.["401"].headers).toHaveProperty("Set-Cookie");
     expect(sessionsResponses?.["401"].headers).toHaveProperty("Set-Cookie");
+    expect(revokeSessionResponses?.["200"].headers).toHaveProperty("Set-Cookie");
+    expect(revokeSessionResponses?.["401"].headers).toHaveProperty("Set-Cookie");
     expect(loginResponses?.["429"].headers).toHaveProperty("Retry-After");
     expect(JSON.stringify(document.components.schemas.LoginSuccessPayload)).not.toContain("token");
     expect(JSON.stringify(document.components.schemas.LoginSuccessPayload)).not.toContain(

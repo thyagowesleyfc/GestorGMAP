@@ -52,6 +52,17 @@ describe("PrismaSessionStore", () => {
           loginIdentifier: "pessoa.teste"
         }
       });
+      const otherPerson = await prisma.person.create({
+        data: {
+          displayName: "Pessoa Outro Usuario"
+        }
+      });
+      const otherUser = await prisma.userAccount.create({
+        data: {
+          personId: otherPerson.id,
+          loginIdentifier: "pessoa.outro.usuario"
+        }
+      });
       const store = new PrismaSessionStore(prisma);
       const now = new Date();
       const expiresAt = new Date(now.getTime() + 60 * 60 * 1000);
@@ -107,7 +118,15 @@ describe("PrismaSessionStore", () => {
       await expect(
         store.findActiveByToken(second.token, new Date(expiresAt.getTime() + 1))
       ).resolves.toBeNull();
-      await expect(store.revokeById(second.session.id, revocationTime)).resolves.toBe(1);
+      await expect(
+        store.revokeActiveForUser(second.session.id, otherUser.id, revocationTime)
+      ).resolves.toBe(0);
+      await expect(store.listActiveForUser(user.id, now)).resolves.toEqual([
+        expect.objectContaining({ id: second.session.id })
+      ]);
+      await expect(
+        store.revokeActiveForUser(second.session.id, user.id, revocationTime)
+      ).resolves.toBe(1);
       await expect(store.listActiveForUser(user.id, now)).resolves.toEqual([]);
     } finally {
       await prisma.$disconnect().catch(() => undefined);

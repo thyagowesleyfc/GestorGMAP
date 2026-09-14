@@ -99,6 +99,28 @@ export class PrismaSessionStore {
     return result.count;
   }
 
+  async revokeActiveForUser(
+    sessionId: string,
+    userId: string,
+    revokedAt = new Date()
+  ): Promise<number> {
+    const result = await this.prisma.userSession.updateMany({
+      where: {
+        id: sessionId,
+        userId,
+        revokedAt: null,
+        expiresAt: {
+          gt: revokedAt
+        }
+      },
+      data: {
+        revokedAt,
+        lastSeenAt: revokedAt
+      }
+    });
+
+    return result.count;
+  }
   async revokeById(sessionId: string, revokedAt = new Date()): Promise<number> {
     const result = await this.prisma.userSession.updateMany({
       where: {

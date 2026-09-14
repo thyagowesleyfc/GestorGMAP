@@ -510,6 +510,114 @@
           }
         }
       }
+    },
+    "/api/auth/sessions/{sessionId}": {
+      "delete": {
+        "operationId": "deleteAuthSession",
+        "summary": "Revoga uma sessao ativa do usuario autenticado",
+        "tags": ["Autenticacao"],
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": "Identificador opaco da sessao retornado na listagem de sessoes ativas."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Sessao revogada. Se for a sessao atual, o cookie tambem e expirado.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              },
+              "Set-Cookie": {
+                "$ref": "#/components/headers/SessionCookie"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkPayload"
+                },
+                "examples": {
+                  "ok": {
+                    "value": {
+                      "ok": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessao atual ausente, expirada, revogada ou usuario sem acesso ativo.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              },
+              "Set-Cookie": {
+                "$ref": "#/components/headers/SessionCookie"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleErrorPayload"
+                },
+                "examples": {
+                  "unauthenticated": {
+                    "value": {
+                      "error": "Sessao nao autenticada."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Sessao alvo inexistente ou indisponivel para o usuario autenticado.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleErrorPayload"
+                },
+                "examples": {
+                  "notFound": {
+                    "value": {
+                      "error": "Sessao nao encontrada."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro tecnico inesperado. A resposta nao expoe detalhe interno.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorPayload"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
