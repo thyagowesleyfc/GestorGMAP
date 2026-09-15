@@ -50,6 +50,7 @@ describe("organization IAM migration", () => {
             and table_name in (
               'person',
               'password_credential',
+              'password_recovery_request',
               'user_account',
               'user_session',
               'team',
@@ -60,6 +61,7 @@ describe("organization IAM migration", () => {
 
       expect(tables.rows.map((row) => row.table_name)).toEqual([
         "password_credential",
+        "password_recovery_request",
         "person",
         "team",
         "team_membership",
@@ -72,6 +74,9 @@ describe("organization IAM migration", () => {
            from pg_constraint
           where conname in (
             'password_credential_hash_not_blank',
+            'password_recovery_request_expires_after_created',
+            'password_recovery_request_token_hash_not_blank',
+            'password_recovery_request_used_after_created',
             'person_display_name_not_blank',
             'team_name_not_blank',
             'team_membership_scope_consistency',
@@ -85,6 +90,9 @@ describe("organization IAM migration", () => {
 
       expect(constraints.rows.map((row) => row.conname)).toEqual([
         "password_credential_hash_not_blank",
+        "password_recovery_request_expires_after_created",
+        "password_recovery_request_token_hash_not_blank",
+        "password_recovery_request_used_after_created",
         "person_display_name_not_blank",
         "team_membership_scope_consistency",
         "team_name_not_blank",
@@ -135,6 +143,12 @@ describe("organization IAM migration", () => {
           "id", "user_id", "session_token_hash", "expires_at", "revoked_at", "updated_at"
         ) values ($1, $2, $3, current_timestamp + interval '1 day', current_timestamp, current_timestamp)`,
         [randomUUID(), userId, "sha256:token-hash-revogado"]
+      );
+      await client.query(
+        `insert into "password_recovery_request" (
+          "id", "user_id", "recovery_token_hash", "expires_at", "updated_at"
+        ) values ($1, $2, $3, current_timestamp + interval '15 minutes', current_timestamp)`,
+        [randomUUID(), userId, "sha256:recovery-token-hash-um"]
       );
 
       const activeSessions = await client.query<{ session_token_hash: string }>(
@@ -252,6 +266,58 @@ describe("organization IAM migration", () => {
           [randomUUID(), randomUUID(), "sha256:unknown-user-token-hash"]
         )
       ).rejects.toThrow(/user_session_user_id_fkey/);
+
+      await expect(
+        client.query(
+          `insert into "password_recovery_request" (
+            "id", "user_id", "recovery_token_hash", "expires_at", "updated_at"
+          ) values ($1, $2, $3, current_timestamp + interval '15 minutes', current_timestamp)`,
+          [randomUUID(), userId, "sha256:recovery-token-hash-um"]
+        )
+      ).rejects.toThrow(/password_recovery_request_recovery_token_hash_key/);
+
+      await expect(
+        client.query(
+          `insert into "password_recovery_request" (
+            "id", "user_id", "recovery_token_hash", "expires_at", "updated_at"
+          ) values ($1, $2, $3, current_timestamp + interval '15 minutes', current_timestamp)`,
+          [randomUUID(), secondUserId, "  "]
+        )
+      ).rejects.toThrow(/password_recovery_request_token_hash_not_blank/);
+
+      await expect(
+        client.query(
+          `insert into "password_recovery_request" (
+            "id", "user_id", "recovery_token_hash", "expires_at", "updated_at"
+          ) values ($1, $2, $3, current_timestamp - interval '1 second', current_timestamp)`,
+          [randomUUID(), secondUserId, "sha256:expired-recovery-token-hash"]
+        )
+      ).rejects.toThrow(/password_recovery_request_expires_after_created/);
+
+      await expect(
+        client.query(
+          `insert into "password_recovery_request" (
+            "id", "user_id", "recovery_token_hash", "expires_at", "used_at", "updated_at"
+          ) values (
+            $1,
+            $2,
+            $3,
+            current_timestamp + interval '15 minutes',
+            current_timestamp - interval '1 second',
+            current_timestamp
+          )`,
+          [randomUUID(), secondUserId, "sha256:used-before-created-recovery-token-hash"]
+        )
+      ).rejects.toThrow(/password_recovery_request_used_after_created/);
+
+      await expect(
+        client.query(
+          `insert into "password_recovery_request" (
+            "id", "user_id", "recovery_token_hash", "expires_at", "updated_at"
+          ) values ($1, $2, $3, current_timestamp + interval '15 minutes', current_timestamp)`,
+          [randomUUID(), randomUUID(), "sha256:unknown-user-recovery-token-hash"]
+        )
+      ).rejects.toThrow(/password_recovery_request_user_id_fkey/);
 
       await expect(
         client.query(

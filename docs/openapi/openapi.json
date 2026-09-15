@@ -322,21 +322,6 @@
               }
             }
           },
-          "500": {
-            "description": "Erro tecnico inesperado. A resposta nao expoe detalhe interno.",
-            "headers": {
-              "X-Correlation-Id": {
-                "$ref": "#/components/headers/CorrelationId"
-              }
-            },
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorPayload"
-                }
-              }
-            }
-          },
           "403": {
             "description": "Origem da requisicao bloqueada pela protecao CSRF.",
             "headers": {
@@ -355,6 +340,21 @@
                       "error": "Origem da requisição não permitida."
                     }
                   }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro tecnico inesperado. A resposta nao expoe detalhe interno.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorPayload"
                 }
               }
             }
@@ -601,6 +601,28 @@
               }
             }
           },
+          "403": {
+            "description": "Origem da requisicao bloqueada pela protecao CSRF.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleErrorPayload"
+                },
+                "examples": {
+                  "csrfBlocked": {
+                    "value": {
+                      "error": "Origem da requisição não permitida."
+                    }
+                  }
+                }
+              }
+            }
+          },
           "404": {
             "description": "Sessao alvo inexistente ou indisponivel para o usuario autenticado.",
             "headers": {
@@ -637,9 +659,58 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/auth/password-recovery/request": {
+      "post": {
+        "operationId": "postAuthPasswordRecoveryRequest",
+        "summary": "Registra solicitacao de recuperacao de senha",
+        "tags": ["Autenticacao"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordRecoveryRequest"
+              },
+              "examples": {
+                "identifier": {
+                  "value": {
+                    "loginIdentifier": "usuario.gmap"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Solicitacao aceita com resposta neutra para evitar enumeracao de usuarios.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasswordRecoveryRequestAcceptedPayload"
+                },
+                "examples": {
+                  "accepted": {
+                    "value": {
+                      "ok": true,
+                      "message": "Se houver uma conta ativa para este identificador, a solicitação de recuperação será registrada."
+                    }
+                  }
+                }
+              }
+            }
           },
-          "403": {
-            "description": "Origem da requisicao bloqueada pela protecao CSRF.",
+          "400": {
+            "description": "Requisicao invalida.",
             "headers": {
               "X-Correlation-Id": {
                 "$ref": "#/components/headers/CorrelationId"
@@ -651,11 +722,51 @@
                   "$ref": "#/components/schemas/SimpleErrorPayload"
                 },
                 "examples": {
-                  "csrfBlocked": {
+                  "invalidPayload": {
                     "value": {
-                      "error": "Origem da requisição não permitida."
+                      "error": "Informe o identificador de login."
                     }
                   }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas solicitacoes de recuperacao em curto intervalo.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleErrorPayload"
+                },
+                "examples": {
+                  "rateLimited": {
+                    "value": {
+                      "error": "Muitas solicitações de recuperação. Tente novamente mais tarde."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro tecnico inesperado. A resposta nao expoe detalhe interno.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorPayload"
                 }
               }
             }
@@ -954,6 +1065,32 @@
           }
         },
         "additionalProperties": false
+      },
+      "PasswordRecoveryRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["loginIdentifier"],
+        "properties": {
+          "loginIdentifier": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Identificador de login informado pelo usuario."
+          }
+        }
+      },
+      "PasswordRecoveryRequestAcceptedPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ok", "message"],
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true
+          },
+          "message": {
+            "type": "string"
+          }
+        }
       }
     }
   }

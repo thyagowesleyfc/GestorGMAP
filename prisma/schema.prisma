@@ -33,16 +33,17 @@ model Person {
 }
 
 model UserAccount {
-  id                   String              @id @default(uuid()) @db.Uuid
-  personId             String              @unique @map("person_id") @db.Uuid
-  loginIdentifier      String              @unique @map("login_identifier") @db.VarChar(160)
-  status               UserStatus          @default(ACTIVE)
-  isTechnicalSuperuser Boolean             @default(false) @map("is_technical_superuser")
-  createdAt            DateTime            @default(now()) @map("created_at")
-  updatedAt            DateTime            @updatedAt @map("updated_at")
-  person               Person              @relation(fields: [personId], references: [id], onDelete: Restrict)
+  id                   String                    @id @default(uuid()) @db.Uuid
+  personId             String                    @unique @map("person_id") @db.Uuid
+  loginIdentifier      String                    @unique @map("login_identifier") @db.VarChar(160)
+  status               UserStatus                @default(ACTIVE)
+  isTechnicalSuperuser Boolean                   @default(false) @map("is_technical_superuser")
+  createdAt            DateTime                  @default(now()) @map("created_at")
+  updatedAt            DateTime                  @updatedAt @map("updated_at")
+  person               Person                    @relation(fields: [personId], references: [id], onDelete: Restrict)
   memberships          TeamMembership[]
   passwordCredential   PasswordCredential?
+  passwordRecoveries   PasswordRecoveryRequest[]
   sessions             UserSession[]
 
   @@index([personId])
@@ -59,6 +60,22 @@ model PasswordCredential {
   user              UserAccount @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   @@map("password_credential")
+}
+
+model PasswordRecoveryRequest {
+  id                String      @id @default(uuid()) @db.Uuid
+  userId            String      @map("user_id") @db.Uuid
+  recoveryTokenHash String      @unique @map("recovery_token_hash") @db.Text
+  expiresAt         DateTime    @map("expires_at")
+  usedAt            DateTime?   @map("used_at")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+  user              UserAccount @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([usedAt])
+  @@map("password_recovery_request")
 }
 
 model UserSession {
