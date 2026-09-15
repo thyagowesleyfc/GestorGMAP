@@ -13,6 +13,7 @@
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f postgres",
     "db:ps": "docker compose ps postgres",
+    "bootstrap:superuser": "node scripts/bootstrap-technical-superuser.mjs",
     "db:up": "docker compose up -d postgres",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
