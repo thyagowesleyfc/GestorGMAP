@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import { handleLogoutRequest } from "../../../src/modules/organization/api/logout-route";
 
-function request(cookie?: string): Request {
+function request(cookie?: string, headers: Record<string, string> = {}): Request {
   return new Request("http://localhost/api/auth/logout", {
-    headers: cookie === undefined ? undefined : { cookie },
+    headers: cookie === undefined ? headers : { cookie, ...headers },
     method: "POST"
   });
 }
@@ -50,6 +50,21 @@ describe("handleLogoutRequest", () => {
     expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
   });
 
+  it("blocks cross-origin logout without revoking the session", async () => {
+    const dependencies = makeDependencies();
+
+    const response = await handleLogoutRequest(
+      request("gmap_session=raw-session-token", { origin: "https://evil.example" }),
+      dependencies
+    );
+
+    await expect(response.json()).resolves.toEqual({
+      error: "Origem da requisi\u00e7\u00e3o n\u00e3o permitida."
+    });
+    expect(response.status).toBe(403);
+    expect(dependencies.sessions.revokeByToken).not.toHaveBeenCalled();
+    expect(response.headers.get("set-cookie")).toBeNull();
+  });
   it("decodes encoded session tokens from the cookie", async () => {
     const dependencies = makeDependencies();
 

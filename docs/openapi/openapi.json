@@ -227,7 +227,7 @@
             }
           },
           "401": {
-            "description": "Credenciais inv\u00e1lidas ou usu\u00e1rio sem acesso ativo.",
+            "description": "Credenciais inválidas ou usuário sem acesso ativo.",
             "headers": {
               "X-Correlation-Id": {
                 "$ref": "#/components/headers/CorrelationId"
@@ -241,7 +241,7 @@
                 "examples": {
                   "invalidCredentials": {
                     "value": {
-                      "error": "Credenciais inv\u00e1lidas."
+                      "error": "Credenciais inválidas."
                     }
                   }
                 }
@@ -333,6 +333,28 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorPayload"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origem da requisicao bloqueada pela protecao CSRF.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleErrorPayload"
+                },
+                "examples": {
+                  "csrfBlocked": {
+                    "value": {
+                      "error": "Origem da requisição não permitida."
+                    }
+                  }
                 }
               }
             }
@@ -612,6 +634,28 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorPayload"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Origem da requisicao bloqueada pela protecao CSRF.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleErrorPayload"
+                },
+                "examples": {
+                  "csrfBlocked": {
+                    "value": {
+                      "error": "Origem da requisição não permitida."
+                    }
+                  }
                 }
               }
             }

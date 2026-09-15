@@ -4,6 +4,7 @@ import {
   buildExpiredSessionCookie,
   type RuntimeEnvironment
 } from "../infrastructure/session/session-cookie";
+import { rejectCrossOriginMutation } from "./csrf-protection";
 import { readSessionTokenFromCookie } from "./session-cookie-reader";
 
 export type SessionRevoker = {
@@ -20,6 +21,12 @@ export async function handleLogoutRequest(
   request: Request,
   dependencies: LogoutRouteDependencies
 ): Promise<NextResponse> {
+  const csrfResponse = rejectCrossOriginMutation(request);
+
+  if (csrfResponse !== null) {
+    return csrfResponse;
+  }
+
   const sessionToken = readSessionTokenFromCookie(request.headers);
   const now = dependencies.now?.() ?? new Date();
 

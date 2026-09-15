@@ -96,6 +96,9 @@ describe("OpenAPI contract", () => {
     expect(document.paths["/api/auth/logout"].post?.responses["200"].headers).toHaveProperty(
       "X-Correlation-Id"
     );
+    expect(document.paths["/api/auth/logout"].post?.responses["403"].headers).toHaveProperty(
+      "X-Correlation-Id"
+    );
     expect(document.paths["/api/auth/logout"].post?.responses["500"].headers).toHaveProperty(
       "X-Correlation-Id"
     );
@@ -116,6 +119,9 @@ describe("OpenAPI contract", () => {
     ).toHaveProperty("X-Correlation-Id");
     expect(
       document.paths["/api/auth/sessions/{sessionId}"].delete?.responses["401"].headers
+    ).toHaveProperty("X-Correlation-Id");
+    expect(
+      document.paths["/api/auth/sessions/{sessionId}"].delete?.responses["403"].headers
     ).toHaveProperty("X-Correlation-Id");
     expect(
       document.paths["/api/auth/sessions/{sessionId}"].delete?.responses["404"].headers

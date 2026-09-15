@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import { handleRevokeSessionRequest } from "../../../src/modules/organization/api/revoke-session-route";
 
-function request(cookie?: string): Request {
+function request(cookie?: string, headers: Record<string, string> = {}): Request {
   return new Request("http://localhost/api/auth/sessions/session-2", {
-    headers: cookie === undefined ? undefined : { cookie },
+    headers: cookie === undefined ? headers : { cookie, ...headers },
     method: "DELETE"
   });
 }
@@ -98,6 +98,22 @@ describe("handleRevokeSessionRequest", () => {
     expect(response.status).toBe(404);
   });
 
+  it("blocks cross-origin session revocation before resolving the session", async () => {
+    const dependencies = makeDependencies();
+
+    const response = await handleRevokeSessionRequest(
+      request("gmap_session=raw-session-token", { origin: "https://evil.example" }),
+      { sessionId: "session-2" },
+      dependencies
+    );
+
+    await expect(response.json()).resolves.toEqual({
+      error: "Origem da requisi\u00e7\u00e3o n\u00e3o permitida."
+    });
+    expect(response.status).toBe(403);
+    expect(dependencies.resolveSession.execute).not.toHaveBeenCalled();
+    expect(dependencies.sessions.revokeActiveForUser).not.toHaveBeenCalled();
+  });
   it("returns 401 and expires the cookie when the cookie is missing", async () => {
     const dependencies = makeDependencies();
 

@@ -5,6 +5,7 @@ import {
   buildExpiredSessionCookie,
   type RuntimeEnvironment
 } from "../infrastructure/session/session-cookie";
+import { rejectCrossOriginMutation } from "./csrf-protection";
 import { readSessionTokenFromCookie } from "./session-cookie-reader";
 
 export type UserSessionRevoker = {
@@ -59,6 +60,11 @@ export async function handleRevokeSessionRequest(
   input: RevokeSessionRouteInput,
   dependencies: RevokeSessionRouteDependencies
 ): Promise<NextResponse> {
+  const csrfResponse = rejectCrossOriginMutation(request);
+
+  if (csrfResponse !== null) {
+    return csrfResponse;
+  }
   const targetSessionId = input.sessionId.trim();
 
   if (!targetSessionId) {
