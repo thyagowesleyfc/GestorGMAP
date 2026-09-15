@@ -773,6 +773,118 @@
           }
         }
       }
+    },
+    "/api/auth/password-recovery/reset": {
+      "post": {
+        "operationId": "postAuthPasswordRecoveryReset",
+        "summary": "Atualiza senha usando token de recuperacao",
+        "tags": ["Autenticacao"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordRecoveryResetRequest"
+              },
+              "examples": {
+                "reset": {
+                  "value": {
+                    "token": "token-opaco-recebido-pelo-usuario",
+                    "newPassword": "NovaSenha123"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Senha atualizada e sessoes ativas revogadas.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PasswordRecoveryResetSuccessPayload"
+                },
+                "examples": {
+                  "ok": {
+                    "value": {
+                      "ok": true,
+                      "message": "Senha atualizada com sucesso."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requisicao invalida, token invalido, expirado, usado ou senha fora da politica.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleErrorPayload"
+                },
+                "examples": {
+                  "neutralFailure": {
+                    "value": {
+                      "error": "Não foi possível atualizar a senha com os dados informados."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Muitas tentativas de recuperacao em curto intervalo.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              },
+              "Retry-After": {
+                "$ref": "#/components/headers/RetryAfter"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimpleErrorPayload"
+                },
+                "examples": {
+                  "rateLimited": {
+                    "value": {
+                      "error": "Muitas tentativas de recuperação. Tente novamente mais tarde."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro tecnico inesperado. A resposta nao expoe detalhe interno.",
+            "headers": {
+              "X-Correlation-Id": {
+                "$ref": "#/components/headers/CorrelationId"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorPayload"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1079,6 +1191,37 @@
         }
       },
       "PasswordRecoveryRequestAcceptedPayload": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ok", "message"],
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      },
+      "PasswordRecoveryResetRequest": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["token", "newPassword"],
+        "properties": {
+          "token": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Token opaco de recuperacao recebido pelo usuario."
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Nova senha a ser validada pela politica de senhas."
+          }
+        }
+      },
+      "PasswordRecoveryResetSuccessPayload": {
         "type": "object",
         "additionalProperties": false,
         "required": ["ok", "message"],

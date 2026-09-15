@@ -40,6 +40,7 @@ describe("OpenAPI contract", () => {
       "/api/auth/login",
       "/api/auth/logout",
       "/api/auth/password-recovery/request",
+      "/api/auth/password-recovery/reset",
       "/api/auth/session",
       "/api/auth/sessions",
       "/api/auth/sessions/{sessionId}",
@@ -58,6 +59,8 @@ describe("OpenAPI contract", () => {
     expect(document.components.schemas).toHaveProperty("LoginSuccessPayload");
     expect(document.components.schemas).toHaveProperty("PasswordRecoveryRequest");
     expect(document.components.schemas).toHaveProperty("PasswordRecoveryRequestAcceptedPayload");
+    expect(document.components.schemas).toHaveProperty("PasswordRecoveryResetRequest");
+    expect(document.components.schemas).toHaveProperty("PasswordRecoveryResetSuccessPayload");
     expect(document.components.schemas).toHaveProperty("AuthSessionPayload");
     expect(document.components.schemas).toHaveProperty("AuthMembership");
     expect(document.components.schemas).toHaveProperty("AuthScope");
@@ -105,6 +108,15 @@ describe("OpenAPI contract", () => {
     expect(
       document.paths["/api/auth/password-recovery/request"].post?.responses["429"].headers
     ).toHaveProperty("X-Correlation-Id");
+    expect(
+      document.paths["/api/auth/password-recovery/reset"].post?.responses["200"].headers
+    ).toHaveProperty("X-Correlation-Id");
+    expect(
+      document.paths["/api/auth/password-recovery/reset"].post?.responses["400"].headers
+    ).toHaveProperty("X-Correlation-Id");
+    expect(
+      document.paths["/api/auth/password-recovery/reset"].post?.responses["429"].headers
+    ).toHaveProperty("X-Correlation-Id");
     expect(document.paths["/api/auth/logout"].post?.responses["403"].headers).toHaveProperty(
       "X-Correlation-Id"
     );
@@ -143,6 +155,8 @@ describe("OpenAPI contract", () => {
     const logoutResponses = document.paths["/api/auth/logout"].post?.responses;
     const passwordRecoveryResponses =
       document.paths["/api/auth/password-recovery/request"].post?.responses;
+    const passwordRecoveryResetResponses =
+      document.paths["/api/auth/password-recovery/reset"].post?.responses;
     const sessionResponses = document.paths["/api/auth/session"].get?.responses;
     const sessionsResponses = document.paths["/api/auth/sessions"].get?.responses;
     const revokeSessionResponses =
@@ -158,8 +172,12 @@ describe("OpenAPI contract", () => {
     expect(revokeSessionResponses?.["401"].headers).toHaveProperty("Set-Cookie");
     expect(loginResponses?.["429"].headers).toHaveProperty("Retry-After");
     expect(passwordRecoveryResponses?.["429"].headers).toHaveProperty("Retry-After");
+    expect(passwordRecoveryResetResponses?.["429"].headers).toHaveProperty("Retry-After");
     expect(
       JSON.stringify(document.components.schemas.PasswordRecoveryRequestAcceptedPayload)
+    ).not.toContain("token");
+    expect(
+      JSON.stringify(document.components.schemas.PasswordRecoveryResetSuccessPayload)
     ).not.toContain("token");
     expect(JSON.stringify(document.components.schemas.LoginSuccessPayload)).not.toContain("token");
     expect(JSON.stringify(document.components.schemas.LoginSuccessPayload)).not.toContain(
