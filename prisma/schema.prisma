@@ -125,3 +125,29 @@ model TeamMembership {
   @@index([scopeType, greCode])
   @@map("team_membership")
 }
+
+model Gre {
+  id             String         @id @default(uuid()) @db.Uuid
+  code           String         @unique @db.VarChar(32)
+  name           String         @db.VarChar(160)
+  active         Boolean        @default(true)
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+  municipalities Municipality[]
+
+  @@map("gre")
+}
+
+model Municipality {
+  id        String   @id @default(uuid()) @db.Uuid
+  ibgeCode  String   @unique @map("ibge_code") @db.VarChar(7)
+  name      String   @db.VarChar(160)
+  greId     String   @map("gre_id") @db.Uuid
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  gre       Gre      @relation(fields: [greId], references: [id], onDelete: Restrict)
+
+  @@index([greId])
+  @@map("municipality")
+}
