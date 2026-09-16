@@ -66,6 +66,18 @@ describe("PrismaAuthenticatedUserContextReader", () => {
           name: "Equipe Inativa"
         }
       });
+      await prisma.gre.createMany({
+        data: [
+          {
+            code: "GRE-01",
+            name: "1a Gerencia Regional de Educacao"
+          },
+          {
+            code: "GRE-02",
+            name: "2a Gerencia Regional de Educacao"
+          }
+        ]
+      });
       const globalMembership = await prisma.teamMembership.create({
         data: {
           userId: user.id,
@@ -81,7 +93,7 @@ describe("PrismaAuthenticatedUserContextReader", () => {
           teamId: greTeam.id,
           role: "MEMBRO",
           scopeType: "GRE",
-          greCode: " GRE-01 ",
+          greCode: "GRE-01",
           active: true
         }
       });

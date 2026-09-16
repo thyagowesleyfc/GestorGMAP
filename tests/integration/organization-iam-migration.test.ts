@@ -1,5 +1,6 @@
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
@@ -8,6 +9,7 @@ import { Client } from "pg";
 import { describe, expect, it } from "vitest";
 
 const execFileAsync = promisify(execFile);
+const linkTeamMembershipGreMigration = "20260916093000_link_team_membership_gre";
 
 async function runPrismaMigrateDeploy(databaseUrl: string): Promise<void> {
   const prismaCli = join(process.cwd(), "node_modules", "prisma", "build", "index.js");
@@ -22,7 +24,75 @@ async function runPrismaMigrateDeploy(databaseUrl: string): Promise<void> {
   });
 }
 
+async function runMigrationsBefore(client: Client, migrationName: string): Promise<void> {
+  const migrationsPath = join(process.cwd(), "prisma", "migrations");
+  const migrationDirectories = (await readdir(migrationsPath, { withFileTypes: true }))
+    .filter((directoryEntry) => directoryEntry.isDirectory())
+    .map((directoryEntry) => directoryEntry.name)
+    .filter((name) => name < migrationName)
+    .sort();
+
+  for (const migrationDirectory of migrationDirectories) {
+    const migrationSql = await readFile(
+      join(migrationsPath, migrationDirectory, "migration.sql"),
+      "utf8"
+    );
+    await client.query(migrationSql);
+  }
+}
+
+async function runMigration(client: Client, migrationName: string): Promise<void> {
+  const migrationSql = await readFile(
+    join(process.cwd(), "prisma", "migrations", migrationName, "migration.sql"),
+    "utf8"
+  );
+
+  await client.query(migrationSql);
+}
 describe("organization IAM migration", () => {
+  it("rejects linking GRE-scoped memberships when legacy rows reference missing canonical GREs", async () => {
+    const postgres = await new PostgreSqlContainer("postgres:17-alpine").start();
+    const databaseUrl = postgres.getConnectionUri();
+    const client = new Client({ connectionString: databaseUrl });
+
+    try {
+      await client.connect();
+      await runMigrationsBefore(client, linkTeamMembershipGreMigration);
+
+      const personId = randomUUID();
+      const userId = randomUUID();
+      const teamId = randomUUID();
+
+      await client.query(
+        `insert into "person" ("id", "display_name", "updated_at") values ($1, $2, current_timestamp)`,
+        [personId, "Pessoa Legada"]
+      );
+      await client.query(
+        `insert into "user_account" (
+          "id", "person_id", "login_identifier", "updated_at"
+        ) values ($1, $2, $3, current_timestamp)`,
+        [userId, personId, "pessoa.legada"]
+      );
+      await client.query(
+        `insert into "team" ("id", "name", "updated_at") values ($1, $2, current_timestamp)`,
+        [teamId, "Equipe Legada"]
+      );
+      await client.query(
+        `insert into "team_membership" (
+          "id", "user_id", "team_id", "role", "scope_type", "gre_code", "updated_at"
+        ) values ($1, $2, $3, 'MEMBRO', 'GRE', 'GRE-99', current_timestamp)`,
+        [randomUUID(), userId, teamId]
+      );
+
+      await expect(runMigration(client, linkTeamMembershipGreMigration)).rejects.toThrow(
+        /orphan GRE scope codes exist: GRE-99/
+      );
+    } finally {
+      await client.end().catch(() => undefined);
+      await postgres.stop();
+    }
+  });
+
   it("applies the schema and enforces core IAM constraints", async () => {
     const postgres = await new PostgreSqlContainer("postgres:17-alpine").start();
     const databaseUrl = postgres.getConnectionUri();
@@ -79,6 +149,7 @@ describe("organization IAM migration", () => {
             'password_recovery_request_used_after_created',
             'person_display_name_not_blank',
             'team_name_not_blank',
+            'team_membership_gre_code_fkey',
             'team_membership_scope_consistency',
             'user_account_login_identifier_normalized',
             'user_session_expires_after_created',
@@ -94,6 +165,7 @@ describe("organization IAM migration", () => {
         "password_recovery_request_token_hash_not_blank",
         "password_recovery_request_used_after_created",
         "person_display_name_not_blank",
+        "team_membership_gre_code_fkey",
         "team_membership_scope_consistency",
         "team_name_not_blank",
         "user_account_login_identifier_normalized",
@@ -169,6 +241,10 @@ describe("organization IAM migration", () => {
       await client.query(
         `insert into "team" ("id", "name", "updated_at") values ($1, $2, current_timestamp)`,
         [teamId, "Equipe Teste"]
+      );
+      await client.query(
+        `insert into "gre" ("id", "code", "name", "updated_at") values ($1, $2, $3, current_timestamp)`,
+        [randomUUID(), "GRE-01", "1a Gerencia Regional de Educacao"]
       );
       await client.query(
         `insert into "team_membership" (
@@ -327,6 +403,24 @@ describe("organization IAM migration", () => {
           [randomUUID(), userId, teamId]
         )
       ).rejects.toThrow(/team_membership_scope_consistency/);
+
+      await expect(
+        client.query(
+          `insert into "team_membership" (
+            "id", "user_id", "team_id", "role", "scope_type", "gre_code", "updated_at"
+          ) values ($1, $2, $3, 'MEMBRO', 'GRE', 'gre-01', current_timestamp)`,
+          [randomUUID(), userId, teamId]
+        )
+      ).rejects.toThrow(/team_membership_scope_consistency/);
+
+      await expect(
+        client.query(
+          `insert into "team_membership" (
+            "id", "user_id", "team_id", "role", "scope_type", "gre_code", "updated_at"
+          ) values ($1, $2, $3, 'MEMBRO', 'GRE', 'GRE-99', current_timestamp)`,
+          [randomUUID(), userId, teamId]
+        )
+      ).rejects.toThrow(/team_membership_gre_code_fkey/);
 
       await expect(
         client.query(

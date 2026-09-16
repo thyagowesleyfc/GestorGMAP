@@ -119,6 +119,7 @@ model TeamMembership {
   updatedAt DateTime       @updatedAt @map("updated_at")
   user      UserAccount    @relation(fields: [userId], references: [id], onDelete: Restrict)
   team      Team           @relation(fields: [teamId], references: [id], onDelete: Restrict)
+  gre       Gre?           @relation(fields: [greCode], references: [code], onDelete: Restrict)
 
   @@index([teamId])
   @@index([userId])
@@ -127,13 +128,14 @@ model TeamMembership {
 }
 
 model Gre {
-  id             String         @id @default(uuid()) @db.Uuid
-  code           String         @unique @db.VarChar(32)
-  name           String         @db.VarChar(160)
-  active         Boolean        @default(true)
-  createdAt      DateTime       @default(now()) @map("created_at")
-  updatedAt      DateTime       @updatedAt @map("updated_at")
-  municipalities Municipality[]
+  id              String           @id @default(uuid()) @db.Uuid
+  code            String           @unique @db.VarChar(32)
+  name            String           @db.VarChar(160)
+  active          Boolean          @default(true)
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+  municipalities  Municipality[]
+  teamMemberships TeamMembership[]
 
   @@map("gre")
 }
