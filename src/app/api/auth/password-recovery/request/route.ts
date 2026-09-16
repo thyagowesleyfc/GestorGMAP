@@ -1,4 +1,5 @@
 import { RequestPasswordRecovery } from "../../../../../modules/organization/application/request-password-recovery";
+import { createIamSecurityAuditLogger } from "../../../../../modules/organization/api/iam-security-audit";
 import { handlePasswordRecoveryRequest } from "../../../../../modules/organization/api/password-recovery-request-route";
 import { PrismaPasswordRecoveryRequestStore } from "../../../../../modules/organization/infrastructure/authentication/prisma-password-recovery-request-store";
 import { PrismaPasswordRecoveryUserReader } from "../../../../../modules/organization/infrastructure/authentication/prisma-password-recovery-user-reader";
@@ -20,9 +21,10 @@ export function POST(request: Request) {
   return withApiObservability(
     request,
     "/api/auth/password-recovery/request",
-    ({ request: observedRequest }) =>
+    ({ correlationId, request: observedRequest }) =>
       handlePasswordRecoveryRequest(observedRequest, {
         requestPasswordRecovery,
+        audit: createIamSecurityAuditLogger(correlationId),
         rateLimiter
       })
   );

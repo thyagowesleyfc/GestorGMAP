@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { LoginRateLimiter } from "../../../src/modules/organization/application/login-rate-limit";
+import type { IamSecurityAuditLogger } from "../../../src/modules/organization/api/iam-security-audit";
 import { handlePasswordRecoveryRequest } from "../../../src/modules/organization/api/password-recovery-request-route";
 
 function request(body: unknown, headers: Record<string, string> = {}): Request {
@@ -33,11 +34,18 @@ function makeRateLimiter(allowed = true): LoginRateLimiter {
   };
 }
 
+function makeAuditLogger(): IamSecurityAuditLogger {
+  return {
+    log: vi.fn()
+  };
+}
+
 function makeDependencies(rateLimiter = makeRateLimiter()) {
   return {
     requestPasswordRecovery: {
       execute: vi.fn().mockResolvedValue({ ok: true })
     },
+    audit: makeAuditLogger(),
     now: () => new Date("2026-09-15T10:00:00.000Z"),
     rateLimiter
   };
@@ -78,6 +86,12 @@ describe("handlePasswordRecoveryRequest", () => {
       loginIdentifier: "usuario.gmap",
       now: new Date("2026-09-15T10:00:00.000Z")
     });
+    expect(dependencies.audit.log).toHaveBeenCalledWith("iam.password_recovery.request_accepted", {
+      ip_address: "203.0.113.10"
+    });
+    expect(JSON.stringify(vi.mocked(dependencies.audit.log).mock.calls)).not.toContain(
+      "usuario.gmap"
+    );
   });
 
   it("rejects invalid payloads before rate limit and application service", async () => {
@@ -96,6 +110,9 @@ describe("handlePasswordRecoveryRequest", () => {
     expect(response.status).toBe(400);
     expect(dependencies.rateLimiter.consume).not.toHaveBeenCalled();
     expect(dependencies.requestPasswordRecovery.execute).not.toHaveBeenCalled();
+    expect(dependencies.audit.log).toHaveBeenCalledWith("iam.password_recovery.request_rejected", {
+      reason_code: "invalid_payload"
+    });
   });
 
   it("returns 429 before creating a recovery request when rate limited", async () => {
@@ -115,5 +132,12 @@ describe("handlePasswordRecoveryRequest", () => {
     expect(response.status).toBe(429);
     expect(response.headers.get("Retry-After")).toBe("60");
     expect(dependencies.requestPasswordRecovery.execute).not.toHaveBeenCalled();
+    expect(dependencies.audit.log).toHaveBeenCalledWith(
+      "iam.password_recovery.request_rate_limited",
+      {
+        ip_address: null,
+        reason_code: "rate_limited"
+      }
+    );
   });
 });

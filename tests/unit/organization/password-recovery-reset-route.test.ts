@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import type { LoginRateLimiter } from "../../../src/modules/organization/application/login-rate-limit";
+import type { IamSecurityAuditLogger } from "../../../src/modules/organization/api/iam-security-audit";
 import { handlePasswordRecoveryResetRequest } from "../../../src/modules/organization/api/password-recovery-reset-route";
 
 function request(body: unknown, headers: Record<string, string> = {}): Request {
@@ -33,6 +34,12 @@ function makeRateLimiter(allowed = true): LoginRateLimiter {
   };
 }
 
+function makeAuditLogger(): IamSecurityAuditLogger {
+  return {
+    log: vi.fn()
+  };
+}
+
 function makeDependencies(options: { ok?: boolean; rateLimiter?: LoginRateLimiter } = {}) {
   return {
     resetPasswordWithRecoveryToken: {
@@ -42,6 +49,7 @@ function makeDependencies(options: { ok?: boolean; rateLimiter?: LoginRateLimite
           (options.ok ?? true) ? { ok: true } : { ok: false, reason: "INVALID_OR_EXPIRED_TOKEN" }
         )
     },
+    audit: makeAuditLogger(),
     now: () => new Date("2026-09-15T11:00:00.000Z"),
     rateLimiter: options.rateLimiter ?? makeRateLimiter()
   };
@@ -82,6 +90,15 @@ describe("handlePasswordRecoveryResetRequest", () => {
       newPassword: "NovaSenha123",
       now: new Date("2026-09-15T11:00:00.000Z")
     });
+    expect(dependencies.audit.log).toHaveBeenCalledWith("iam.password_recovery.reset_succeeded", {
+      ip_address: "203.0.113.10"
+    });
+    expect(JSON.stringify(vi.mocked(dependencies.audit.log).mock.calls)).not.toContain(
+      "raw-recovery-token"
+    );
+    expect(JSON.stringify(vi.mocked(dependencies.audit.log).mock.calls)).not.toContain(
+      "NovaSenha123"
+    );
   });
 
   it("returns the same neutral message for invalid payloads and invalid tokens", async () => {
@@ -101,6 +118,7 @@ describe("handlePasswordRecoveryResetRequest", () => {
         error: "N\u00e3o foi poss\u00edvel atualizar a senha com os dados informados."
       });
       expect(response.status).toBe(400);
+      expect(scenario.dependencies.audit.log).toHaveBeenCalled();
     }
   });
 
@@ -135,5 +153,12 @@ describe("handlePasswordRecoveryResetRequest", () => {
     expect(response.status).toBe(429);
     expect(response.headers.get("Retry-After")).toBe("60");
     expect(dependencies.resetPasswordWithRecoveryToken.execute).not.toHaveBeenCalled();
+    expect(dependencies.audit.log).toHaveBeenCalledWith(
+      "iam.password_recovery.reset_rate_limited",
+      {
+        ip_address: "unknown",
+        reason_code: "rate_limited"
+      }
+    );
   });
 });

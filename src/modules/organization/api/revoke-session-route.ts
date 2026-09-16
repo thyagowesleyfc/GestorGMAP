@@ -6,6 +6,7 @@ import {
   type RuntimeEnvironment
 } from "../infrastructure/session/session-cookie";
 import { rejectCrossOriginMutation } from "./csrf-protection";
+import type { IamSecurityAuditLogger } from "./iam-security-audit";
 import { readSessionTokenFromCookie } from "./session-cookie-reader";
 
 export type UserSessionRevoker = {
@@ -17,11 +18,26 @@ export type RevokeSessionRouteDependencies = {
   sessions: UserSessionRevoker;
   environment?: RuntimeEnvironment;
   now?: () => Date;
+  audit?: IamSecurityAuditLogger;
 };
 
 export type RevokeSessionRouteInput = {
   sessionId: string;
 };
+
+function getClientIp(headers: Headers): string | undefined {
+  const forwardedFor = headers.get("x-forwarded-for");
+
+  if (forwardedFor !== null) {
+    const firstForwardedAddress = forwardedFor.split(",")[0]?.trim();
+
+    if (firstForwardedAddress) {
+      return firstForwardedAddress;
+    }
+  }
+
+  return headers.get("x-real-ip")?.trim() || undefined;
+}
 
 function unauthenticatedResponse(environment?: RuntimeEnvironment): NextResponse {
   const response = NextResponse.json(
@@ -66,6 +82,7 @@ export async function handleRevokeSessionRequest(
     return csrfResponse;
   }
   const targetSessionId = input.sessionId.trim();
+  const ipAddress = getClientIp(request.headers);
 
   if (!targetSessionId) {
     return notFoundResponse();
@@ -108,6 +125,13 @@ export async function handleRevokeSessionRequest(
       status: 200
     }
   );
+
+  dependencies.audit?.log("iam.session.revoked", {
+    current_session_revoked: targetSessionId === resolvedSession.session.id,
+    ip_address: ipAddress ?? null,
+    target_session_id: targetSessionId,
+    user_id: resolvedSession.user.id
+  });
 
   if (targetSessionId === resolvedSession.session.id) {
     response.cookies.set(buildExpiredSessionCookie({ environment: dependencies.environment }));

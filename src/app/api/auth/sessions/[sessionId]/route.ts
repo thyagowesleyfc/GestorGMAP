@@ -1,4 +1,5 @@
 import { ResolveAuthenticatedSession } from "../../../../../modules/organization/application/resolve-authenticated-session";
+import { createIamSecurityAuditLogger } from "../../../../../modules/organization/api/iam-security-audit";
 import { handleRevokeSessionRequest } from "../../../../../modules/organization/api/revoke-session-route";
 import { PrismaAuthenticatedUserContextReader } from "../../../../../modules/organization/infrastructure/authentication/prisma-authenticated-user-context-reader";
 import { PrismaSessionStore } from "../../../../../modules/organization/infrastructure/session/prisma-session-store";
@@ -25,7 +26,7 @@ export async function DELETE(request: Request, context: RouteContext) {
   return withApiObservability(
     request,
     "/api/auth/sessions/{sessionId}",
-    ({ request: observedRequest }) =>
+    ({ correlationId, request: observedRequest }) =>
       handleRevokeSessionRequest(
         observedRequest,
         {
@@ -33,6 +34,7 @@ export async function DELETE(request: Request, context: RouteContext) {
         },
         {
           resolveSession,
+          audit: createIamSecurityAuditLogger(correlationId),
           sessions
         }
       )

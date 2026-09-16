@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { IamSecurityAuditLogger } from "../../../src/modules/organization/api/iam-security-audit";
 import { handleLogoutRequest } from "../../../src/modules/organization/api/logout-route";
 
 function request(cookie?: string, headers: Record<string, string> = {}): Request {
@@ -9,8 +10,15 @@ function request(cookie?: string, headers: Record<string, string> = {}): Request
   });
 }
 
+function makeAuditLogger(): IamSecurityAuditLogger {
+  return {
+    log: vi.fn()
+  };
+}
+
 function makeDependencies() {
   return {
+    audit: makeAuditLogger(),
     environment: "test" as const,
     now: () => new Date("2026-09-14T12:00:00.000Z"),
     sessions: {
@@ -38,6 +46,13 @@ describe("handleLogoutRequest", () => {
     expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
     expect(response.headers.get("set-cookie")).toContain("HttpOnly");
     expect(response.headers.get("set-cookie")).toContain("SameSite=lax");
+    expect(dependencies.audit.log).toHaveBeenCalledWith("iam.logout.succeeded", {
+      had_session_cookie: true,
+      ip_address: null
+    });
+    expect(JSON.stringify(vi.mocked(dependencies.audit.log).mock.calls)).not.toContain(
+      "raw-session-token"
+    );
   });
 
   it("expires the cookie even when there is no session cookie", async () => {
@@ -48,6 +63,10 @@ describe("handleLogoutRequest", () => {
     await expect(response.json()).resolves.toEqual({ ok: true });
     expect(dependencies.sessions.revokeByToken).not.toHaveBeenCalled();
     expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
+    expect(dependencies.audit.log).toHaveBeenCalledWith("iam.logout.succeeded", {
+      had_session_cookie: false,
+      ip_address: null
+    });
   });
 
   it("blocks cross-origin logout without revoking the session", async () => {
@@ -64,6 +83,7 @@ describe("handleLogoutRequest", () => {
     expect(response.status).toBe(403);
     expect(dependencies.sessions.revokeByToken).not.toHaveBeenCalled();
     expect(response.headers.get("set-cookie")).toBeNull();
+    expect(dependencies.audit.log).not.toHaveBeenCalled();
   });
   it("decodes encoded session tokens from the cookie", async () => {
     const dependencies = makeDependencies();

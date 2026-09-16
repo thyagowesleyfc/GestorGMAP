@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 
 import type { LoginRateLimiter } from "../application/login-rate-limit";
 import type { ResetPasswordWithRecoveryToken } from "../application/reset-password-with-recovery-token";
+import type { IamSecurityAuditLogger } from "./iam-security-audit";
 
 export type PasswordRecoveryResetRouteDependencies = {
   resetPasswordWithRecoveryToken: Pick<ResetPasswordWithRecoveryToken, "execute">;
   rateLimiter: LoginRateLimiter;
   now?: () => Date;
+  audit?: IamSecurityAuditLogger;
 };
 
 type PasswordRecoveryResetBody = {
@@ -88,6 +90,10 @@ export async function handlePasswordRecoveryResetRequest(
   const body = await readResetBody(request);
 
   if (body === null) {
+    dependencies.audit?.log("iam.password_recovery.reset_rejected", {
+      reason_code: "invalid_payload"
+    });
+
     return jsonError(RESET_FAILURE_MESSAGE, 400);
   }
 
@@ -96,6 +102,11 @@ export async function handlePasswordRecoveryResetRequest(
   const rateLimitDecision = dependencies.rateLimiter.consume({ ipAddress }, now);
 
   if (!rateLimitDecision.allowed) {
+    dependencies.audit?.log("iam.password_recovery.reset_rate_limited", {
+      ip_address: ipAddress,
+      reason_code: "rate_limited"
+    });
+
     return jsonError(
       "Muitas tentativas de recupera\u00e7\u00e3o. Tente novamente mais tarde.",
       429,
@@ -112,8 +123,17 @@ export async function handlePasswordRecoveryResetRequest(
   });
 
   if (!result.ok) {
+    dependencies.audit?.log("iam.password_recovery.reset_failed", {
+      ip_address: ipAddress,
+      reason_code: result.reason
+    });
+
     return jsonError(RESET_FAILURE_MESSAGE, 400);
   }
+
+  dependencies.audit?.log("iam.password_recovery.reset_succeeded", {
+    ip_address: ipAddress
+  });
 
   return NextResponse.json(
     {

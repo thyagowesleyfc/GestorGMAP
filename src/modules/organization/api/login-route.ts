@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import type { AuthenticateUser } from "../application/authenticate-user";
 import type { LoginRateLimiter } from "../application/login-rate-limit";
+import type { IamSecurityAuditLogger } from "./iam-security-audit";
 import {
   buildSessionCookie,
   type RuntimeEnvironment
@@ -12,6 +13,7 @@ export type LoginRouteDependencies = {
   rateLimiter: LoginRateLimiter;
   environment?: RuntimeEnvironment;
   now?: () => Date;
+  audit?: IamSecurityAuditLogger;
 };
 
 type LoginRequestBody = {
@@ -89,6 +91,10 @@ export async function handleLoginRequest(
   const body = await readLoginBody(request);
 
   if (body === null) {
+    dependencies.audit?.log("iam.login.rejected", {
+      reason_code: "invalid_payload"
+    });
+
     return jsonError("Informe identificador de login e senha.", 400);
   }
 
@@ -101,6 +107,11 @@ export async function handleLoginRequest(
   const rateLimitDecision = dependencies.rateLimiter.consume(rateLimitIdentity, now);
 
   if (!rateLimitDecision.allowed) {
+    dependencies.audit?.log("iam.login.rate_limited", {
+      ip_address: ipAddress ?? null,
+      reason_code: "rate_limited"
+    });
+
     return jsonError("Muitas tentativas de login. Tente novamente mais tarde.", 429, {
       "Retry-After": String(rateLimitDecision.retryAfterSeconds)
     });
@@ -115,10 +126,20 @@ export async function handleLoginRequest(
   });
 
   if (!result.ok) {
+    dependencies.audit?.log("iam.login.failed", {
+      ip_address: ipAddress ?? null,
+      reason_code: result.reason
+    });
+
     return jsonError("Credenciais inv\u00e1lidas.", 401);
   }
 
   dependencies.rateLimiter.reset(rateLimitIdentity);
+  dependencies.audit?.log("iam.login.succeeded", {
+    ip_address: ipAddress ?? null,
+    user_agent: request.headers.get("user-agent") ?? null,
+    user_id: result.userId
+  });
 
   const response = NextResponse.json(
     {

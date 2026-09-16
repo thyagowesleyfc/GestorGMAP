@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 
 import type { LoginRateLimiter } from "../application/login-rate-limit";
 import type { RequestPasswordRecovery } from "../application/request-password-recovery";
+import type { IamSecurityAuditLogger } from "./iam-security-audit";
 
 export type PasswordRecoveryRequestRouteDependencies = {
   requestPasswordRecovery: Pick<RequestPasswordRecovery, "execute">;
   rateLimiter: LoginRateLimiter;
   now?: () => Date;
+  audit?: IamSecurityAuditLogger;
 };
 
 type PasswordRecoveryRequestBody = {
@@ -78,6 +80,10 @@ export async function handlePasswordRecoveryRequest(
   const body = await readRequestBody(request);
 
   if (body === null) {
+    dependencies.audit?.log("iam.password_recovery.request_rejected", {
+      reason_code: "invalid_payload"
+    });
+
     return jsonError("Informe o identificador de login.", 400);
   }
 
@@ -90,6 +96,11 @@ export async function handlePasswordRecoveryRequest(
   const rateLimitDecision = dependencies.rateLimiter.consume(rateLimitIdentity, now);
 
   if (!rateLimitDecision.allowed) {
+    dependencies.audit?.log("iam.password_recovery.request_rate_limited", {
+      ip_address: ipAddress ?? null,
+      reason_code: "rate_limited"
+    });
+
     return jsonError(
       "Muitas solicita\u00e7\u00f5es de recupera\u00e7\u00e3o. Tente novamente mais tarde.",
       429,
@@ -102,6 +113,9 @@ export async function handlePasswordRecoveryRequest(
   await dependencies.requestPasswordRecovery.execute({
     loginIdentifier: body.loginIdentifier,
     now
+  });
+  dependencies.audit?.log("iam.password_recovery.request_accepted", {
+    ip_address: ipAddress ?? null
   });
 
   return NextResponse.json(

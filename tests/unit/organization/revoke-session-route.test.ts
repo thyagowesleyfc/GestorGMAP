@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import type { IamSecurityAuditLogger } from "../../../src/modules/organization/api/iam-security-audit";
 import { handleRevokeSessionRequest } from "../../../src/modules/organization/api/revoke-session-route";
 
 function request(cookie?: string, headers: Record<string, string> = {}): Request {
@@ -24,6 +25,12 @@ const resolvedSession = {
   memberships: []
 };
 
+function makeAuditLogger(): IamSecurityAuditLogger {
+  return {
+    log: vi.fn()
+  };
+}
+
 function makeDependencies(
   options: {
     resolved?: typeof resolvedSession | null;
@@ -31,6 +38,7 @@ function makeDependencies(
   } = {}
 ) {
   return {
+    audit: makeAuditLogger(),
     environment: "test" as const,
     now: () => new Date("2026-09-14T12:00:00.000Z"),
     resolveSession: {
@@ -65,6 +73,15 @@ describe("handleRevokeSessionRequest", () => {
       "session-2",
       "user-1",
       new Date("2026-09-14T12:00:00.000Z")
+    );
+    expect(dependencies.audit.log).toHaveBeenCalledWith("iam.session.revoked", {
+      current_session_revoked: false,
+      ip_address: null,
+      target_session_id: "session-2",
+      user_id: "user-1"
+    });
+    expect(JSON.stringify(vi.mocked(dependencies.audit.log).mock.calls)).not.toContain(
+      "raw-session-token"
     );
   });
 

@@ -1,4 +1,5 @@
 import { ResetPasswordWithRecoveryToken } from "../../../../../modules/organization/application/reset-password-with-recovery-token";
+import { createIamSecurityAuditLogger } from "../../../../../modules/organization/api/iam-security-audit";
 import { handlePasswordRecoveryResetRequest } from "../../../../../modules/organization/api/password-recovery-reset-route";
 import { PrismaPasswordRecoveryResetStore } from "../../../../../modules/organization/infrastructure/authentication/prisma-password-recovery-reset-store";
 import { InMemoryLoginRateLimiter } from "../../../../../modules/organization/infrastructure/security/in-memory-login-rate-limiter";
@@ -20,9 +21,10 @@ export function POST(request: Request) {
   return withApiObservability(
     request,
     "/api/auth/password-recovery/reset",
-    ({ request: observedRequest }) =>
+    ({ correlationId, request: observedRequest }) =>
       handlePasswordRecoveryResetRequest(observedRequest, {
         resetPasswordWithRecoveryToken,
+        audit: createIamSecurityAuditLogger(correlationId),
         rateLimiter
       })
   );

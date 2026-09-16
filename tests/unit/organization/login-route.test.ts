@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { AuthenticateUserResult } from "../../../src/modules/organization/application/authenticate-user";
 import type { LoginRateLimiter } from "../../../src/modules/organization/application/login-rate-limit";
+import type { IamSecurityAuditLogger } from "../../../src/modules/organization/api/iam-security-audit";
 import { handleLoginRequest } from "../../../src/modules/organization/api/login-route";
 
 function request(body: unknown, headers: Record<string, string> = {}): Request {
@@ -34,11 +35,18 @@ function makeRateLimiter(allowed = true): LoginRateLimiter {
   };
 }
 
+function makeAuditLogger(): IamSecurityAuditLogger {
+  return {
+    log: vi.fn()
+  };
+}
+
 function makeDependencies(result: AuthenticateUserResult, rateLimiter = makeRateLimiter()) {
   return {
     authenticateUser: {
       execute: vi.fn().mockResolvedValue(result)
     },
+    audit: makeAuditLogger(),
     environment: "test" as const,
     now: () => new Date("2026-09-14T12:00:00.000Z"),
     rateLimiter
@@ -89,6 +97,17 @@ describe("handleLoginRequest", () => {
       loginIdentifier: "usuario.gmap",
       ipAddress: "203.0.113.10"
     });
+    expect(dependencies.audit.log).toHaveBeenCalledWith("iam.login.succeeded", {
+      ip_address: "203.0.113.10",
+      user_agent: "Vitest",
+      user_id: "user-1"
+    });
+    expect(JSON.stringify(vi.mocked(dependencies.audit.log).mock.calls)).not.toContain(
+      "SenhaForte123"
+    );
+    expect(JSON.stringify(vi.mocked(dependencies.audit.log).mock.calls)).not.toContain(
+      "raw-session-token"
+    );
   });
 
   it("rejects invalid payloads before rate limit and authentication", async () => {
@@ -105,6 +124,9 @@ describe("handleLoginRequest", () => {
     expect(response.status).toBe(400);
     expect(dependencies.rateLimiter.consume).not.toHaveBeenCalled();
     expect(dependencies.authenticateUser.execute).not.toHaveBeenCalled();
+    expect(dependencies.audit.log).toHaveBeenCalledWith("iam.login.rejected", {
+      reason_code: "invalid_payload"
+    });
   });
 
   it("returns the same unauthorized response for invalid credentials and inactive users", async () => {
@@ -122,6 +144,10 @@ describe("handleLoginRequest", () => {
       expect(response.status).toBe(401);
       expect(response.headers.get("set-cookie")).toBeNull();
       expect(dependencies.rateLimiter.reset).not.toHaveBeenCalled();
+      expect(dependencies.audit.log).toHaveBeenCalledWith("iam.login.failed", {
+        ip_address: null,
+        reason_code: reason
+      });
     }
   });
 
@@ -143,5 +169,9 @@ describe("handleLoginRequest", () => {
     expect(response.status).toBe(429);
     expect(response.headers.get("Retry-After")).toBe("60");
     expect(dependencies.authenticateUser.execute).not.toHaveBeenCalled();
+    expect(dependencies.audit.log).toHaveBeenCalledWith("iam.login.rate_limited", {
+      ip_address: null,
+      reason_code: "rate_limited"
+    });
   });
 });

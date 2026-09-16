@@ -1,4 +1,5 @@
 import { AuthenticateUser } from "../../../../modules/organization/application/authenticate-user";
+import { createIamSecurityAuditLogger } from "../../../../modules/organization/api/iam-security-audit";
 import { handleLoginRequest } from "../../../../modules/organization/api/login-route";
 import { PrismaAuthenticationCredentialReader } from "../../../../modules/organization/infrastructure/authentication/prisma-authentication-credential-reader";
 import { ScryptPasswordHasher } from "../../../../modules/organization/infrastructure/security/scrypt-password-hasher";
@@ -17,10 +18,14 @@ const authenticateUser = new AuthenticateUser(
 );
 
 export function POST(request: Request) {
-  return withApiObservability(request, "/api/auth/login", ({ request: observedRequest }) =>
-    handleLoginRequest(observedRequest, {
-      authenticateUser,
-      rateLimiter
-    })
+  return withApiObservability(
+    request,
+    "/api/auth/login",
+    ({ correlationId, request: observedRequest }) =>
+      handleLoginRequest(observedRequest, {
+        authenticateUser,
+        audit: createIamSecurityAuditLogger(correlationId),
+        rateLimiter
+      })
   );
 }
