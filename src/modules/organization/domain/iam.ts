@@ -83,7 +83,8 @@ export function scopeAllows(
 export function hasBusinessAuthority(
   user: UserAccount,
   memberships: TeamMembership[],
-  requestedScope?: BusinessScope
+  requestedScope?: BusinessScope,
+  requiredTeamId?: string
 ): boolean {
   if (!isActiveUser(user)) {
     return false;
@@ -91,6 +92,10 @@ export function hasBusinessAuthority(
 
   return memberships.some((membership) => {
     if (membership.userId !== user.id || !isActiveMembership(membership)) {
+      return false;
+    }
+
+    if (requiredTeamId !== undefined && membership.teamId !== requiredTeamId) {
       return false;
     }
 

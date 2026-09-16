@@ -14,6 +14,8 @@ import {
 
 const userId = "user-1";
 const teamId = "team-gmap";
+const managementTeamId = "team-gerencia";
+const triageTeamId = "team-triagem";
 
 function user(overrides: Partial<UserAccount> = {}): UserAccount {
   return {
@@ -43,6 +45,7 @@ type AuthorizationCase = {
   technicalSuperuser: boolean;
   memberships: TeamMembership[];
   requestedScope?: BusinessScope;
+  requiredTeamId?: string;
   expected: boolean;
 };
 
@@ -120,20 +123,35 @@ const authorizationCases: AuthorizationCase[] = [
     expected: false
   },
   {
-    name: "management GLOBAL scope accessing a GRE scope",
+    name: "management team with GLOBAL scope accessing a GRE scope",
     userStatus: "ACTIVE",
     technicalSuperuser: false,
-    memberships: [membership({ role: "LIDER", scope: createGlobalScope() })],
+    memberships: [
+      membership({ teamId: managementTeamId, role: "LIDER", scope: createGlobalScope() })
+    ],
     requestedScope: createGreScope("GRE-02"),
+    requiredTeamId: managementTeamId,
     expected: true
   },
   {
-    name: "management GLOBAL scope accessing GLOBAL scope",
+    name: "management team with GLOBAL scope accessing GLOBAL scope",
     userStatus: "ACTIVE",
     technicalSuperuser: false,
-    memberships: [membership({ role: "MEMBRO", scope: createGlobalScope() })],
+    memberships: [
+      membership({ teamId: managementTeamId, role: "MEMBRO", scope: createGlobalScope() })
+    ],
     requestedScope: createGlobalScope(),
+    requiredTeamId: managementTeamId,
     expected: true
+  },
+  {
+    name: "non-management team with GLOBAL scope cannot pass a management gate",
+    userStatus: "ACTIVE",
+    technicalSuperuser: false,
+    memberships: [membership({ teamId: triageTeamId, role: "LIDER", scope: createGlobalScope() })],
+    requestedScope: createGreScope("GRE-02"),
+    requiredTeamId: managementTeamId,
+    expected: false
   },
   {
     name: "GRE scope trying to access another GRE",
@@ -162,7 +180,8 @@ describe("IAM authorization matrix", () => {
           isTechnicalSuperuser: testCase.technicalSuperuser
         }),
         testCase.memberships,
-        testCase.requestedScope
+        testCase.requestedScope,
+        testCase.requiredTeamId
       )
     ).toBe(testCase.expected);
   });
