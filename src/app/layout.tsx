@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import "./globals.css";
+import { OperationalTabGuard } from "./operational-tab-guard";
 
 export const metadata: Metadata = {
   title: "GESTOR GMAP",
@@ -15,7 +16,9 @@ type RootLayoutProps = {
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="pt-BR">
-      <body>{children}</body>
+      <body>
+        <OperationalTabGuard>{children}</OperationalTabGuard>
+      </body>
     </html>
   );
 }

@@ -38,6 +38,64 @@ test("lista sessoes ativas", async ({ page }) => {
   await expect(page.getByText("Dispositivo n\u00e3o identificado")).toBeVisible();
 });
 
+test("bloqueia uma segunda aba operacional e permite assumir", async ({ context }) => {
+  await context.route("**/api/auth/sessions", async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({
+        contentType: "application/json",
+        status: 200,
+        body: JSON.stringify({ sessions: activeSessions })
+      });
+      return;
+    }
+
+    await route.continue();
+  });
+
+  const firstPage = await context.newPage();
+  const secondPage = await context.newPage();
+
+  await firstPage.goto("/sessoes");
+  await expect(firstPage.getByRole("heading", { name: "Minhas sess\u00f5es" })).toBeVisible();
+  await expect(firstPage.getByRole("alertdialog")).toBeHidden();
+  await firstPage.waitForFunction(
+    () => window.localStorage.getItem("gestor-gmap:active-operational-tab") !== null
+  );
+
+  await secondPage.goto("/sessoes");
+  await expect(secondPage.getByRole("alertdialog")).toContainText(
+    "Outra aba operacional est\u00e1 ativa"
+  );
+
+  await secondPage.getByRole("button", { name: "Assumir esta aba" }).click();
+
+  await expect(secondPage.getByRole("alertdialog")).toBeHidden();
+  await expect(firstPage.getByRole("alertdialog")).toContainText(
+    "Outra aba operacional est\u00e1 ativa"
+  );
+
+  await firstPage.close();
+  await secondPage.close();
+});
+
+test("nao bloqueia a tela de login quando ha outra aba operacional", async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage.setItem(
+      "gestor-gmap:active-operational-tab",
+      JSON.stringify({
+        tabId: "outra-aba",
+        path: "/sessoes",
+        lastSeenAt: Date.now()
+      })
+    );
+  });
+
+  await page.goto("/login");
+
+  await expect(page.getByRole("heading", { name: "Entrar" })).toBeVisible();
+  await expect(page.getByRole("alertdialog")).toBeHidden();
+});
+
 test("revoga uma sessao que nao e a atual", async ({ page }) => {
   let deleteCalled = false;
 
