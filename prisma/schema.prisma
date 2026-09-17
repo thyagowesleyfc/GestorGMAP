@@ -45,6 +45,11 @@ enum MaterialControlType {
   CONSUMO
 }
 
+enum MaterialConfigurationType {
+  KIT
+  COMPOSTO
+}
+
 model Person {
   id          String        @id @default(uuid()) @db.Uuid
   displayName String        @map("display_name") @db.VarChar(160)
@@ -216,23 +221,53 @@ model MaterialClass {
 }
 
 model MaterialSingular {
-  id                          String              @id @default(uuid()) @db.Uuid
-  code                        String              @unique @db.VarChar(64)
-  name                        String              @db.VarChar(180)
-  classId                     String              @map("class_id") @db.Uuid
-  controlType                 MaterialControlType @map("control_type")
-  isTombable                  Boolean             @default(false) @map("is_tombable")
-  patrimonialGroupCode        String?             @map("patrimonial_group_code") @db.VarChar(64)
-  allowsCorrectiveMaintenance Boolean             @default(false) @map("allows_corrective_maintenance")
-  allowsPreventiveMaintenance Boolean             @default(false) @map("allows_preventive_maintenance")
-  allowsReconditioning        Boolean             @default(false) @map("allows_reconditioning")
-  allowsReplacement           Boolean             @default(false) @map("allows_replacement")
-  active                      Boolean             @default(true)
-  createdAt                   DateTime            @default(now()) @map("created_at")
-  updatedAt                   DateTime            @updatedAt @map("updated_at")
-  materialClass               MaterialClass       @relation(fields: [classId], references: [id], onDelete: Restrict)
+  id                          String                           @id @default(uuid()) @db.Uuid
+  code                        String                           @unique @db.VarChar(64)
+  name                        String                           @db.VarChar(180)
+  classId                     String                           @map("class_id") @db.Uuid
+  controlType                 MaterialControlType              @map("control_type")
+  isTombable                  Boolean                          @default(false) @map("is_tombable")
+  patrimonialGroupCode        String?                          @map("patrimonial_group_code") @db.VarChar(64)
+  allowsCorrectiveMaintenance Boolean                          @default(false) @map("allows_corrective_maintenance")
+  allowsPreventiveMaintenance Boolean                          @default(false) @map("allows_preventive_maintenance")
+  allowsReconditioning        Boolean                          @default(false) @map("allows_reconditioning")
+  allowsReplacement           Boolean                          @default(false) @map("allows_replacement")
+  active                      Boolean                          @default(true)
+  createdAt                   DateTime                         @default(now()) @map("created_at")
+  updatedAt                   DateTime                         @updatedAt @map("updated_at")
+  materialClass               MaterialClass                    @relation(fields: [classId], references: [id], onDelete: Restrict)
+  configurationComponents     MaterialConfigurationComponent[]
 
   @@index([classId])
   @@index([controlType])
   @@map("material_singular")
+}
+
+model MaterialConfiguration {
+  id                String                           @id @default(uuid()) @db.Uuid
+  code              String                           @unique @db.VarChar(64)
+  name              String                           @db.VarChar(180)
+  configurationType MaterialConfigurationType        @map("configuration_type")
+  active            Boolean                          @default(true)
+  createdAt         DateTime                         @default(now()) @map("created_at")
+  updatedAt         DateTime                         @updatedAt @map("updated_at")
+  components        MaterialConfigurationComponent[]
+
+  @@index([configurationType])
+  @@map("material_configuration")
+}
+
+model MaterialConfigurationComponent {
+  id                 String                @id @default(uuid()) @db.Uuid
+  configurationId    String                @map("configuration_id") @db.Uuid
+  materialSingularId String                @map("material_singular_id") @db.Uuid
+  quantity           Int
+  createdAt          DateTime              @default(now()) @map("created_at")
+  updatedAt          DateTime              @updatedAt @map("updated_at")
+  configuration      MaterialConfiguration @relation(fields: [configurationId], references: [id], onDelete: Restrict)
+  materialSingular   MaterialSingular      @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
+
+  @@unique([configurationId, materialSingularId], map: "material_configuration_component_unique_item")
+  @@index([materialSingularId])
+  @@map("material_configuration_component")
 }
