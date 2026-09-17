@@ -23,7 +23,7 @@ async function runPrismaMigrateDeploy(databaseUrl: string): Promise<void> {
 }
 
 describe("catalog location migration", () => {
-  it("creates GREs and municipalities with stable public codes", async () => {
+  it("creates GREs, municipalities and entities with stable public codes", async () => {
     const postgres = await new PostgreSqlContainer("postgres:17-alpine").start();
     const client = new Client({ connectionString: postgres.getConnectionUri() });
 
@@ -35,16 +35,23 @@ describe("catalog location migration", () => {
         `select table_name
            from information_schema.tables
           where table_schema = 'public'
-            and table_name in ('gre', 'municipality')
+            and table_name in ('entity', 'gre', 'municipality')
           order by table_name`
       );
 
-      expect(tables.rows.map((row) => row.table_name)).toEqual(["gre", "municipality"]);
+      expect(tables.rows.map((row) => row.table_name)).toEqual(["entity", "gre", "municipality"]);
 
       const constraints = await client.query<{ conname: string }>(
         `select conname
            from pg_constraint
           where conname in (
+            'entity_code_public_format',
+            'entity_gre_id_fkey',
+            'entity_municipality_gre_consistency_fkey',
+            'entity_municipality_id_fkey',
+            'entity_name_not_blank',
+            'entity_parent_entity_id_fkey',
+            'entity_parent_not_self',
             'gre_code_public_format',
             'gre_name_not_blank',
             'municipality_gre_id_fkey',
@@ -55,6 +62,13 @@ describe("catalog location migration", () => {
       );
 
       expect(constraints.rows.map((row) => row.conname)).toEqual([
+        "entity_code_public_format",
+        "entity_gre_id_fkey",
+        "entity_municipality_gre_consistency_fkey",
+        "entity_municipality_id_fkey",
+        "entity_name_not_blank",
+        "entity_parent_entity_id_fkey",
+        "entity_parent_not_self",
         "gre_code_public_format",
         "gre_name_not_blank",
         "municipality_gre_id_fkey",
@@ -63,11 +77,18 @@ describe("catalog location migration", () => {
       ]);
 
       const greId = randomUUID();
+      const secondGreId = randomUUID();
       const municipalityId = randomUUID();
+      const entityId = randomUUID();
+      const childEntityId = randomUUID();
 
       await client.query(
         `insert into "gre" ("id", "code", "name", "updated_at") values ($1, $2, $3, current_timestamp)`,
         [greId, "GRE-01", "1a Gerencia Regional de Educacao"]
+      );
+      await client.query(
+        `insert into "gre" ("id", "code", "name", "updated_at") values ($1, $2, $3, current_timestamp)`,
+        [secondGreId, "GRE-02", "2a Gerencia Regional de Educacao"]
       );
       await client.query(
         `insert into "municipality" (
@@ -76,15 +97,58 @@ describe("catalog location migration", () => {
         [municipalityId, "2211001", "Teresina", greId]
       );
 
-      const linkedRows = await client.query<{ municipality_code: string; gre_code: string }>(
-        `select m."ibge_code" as municipality_code, g."code" as gre_code
-           from "municipality" m
-           join "gre" g on g."id" = m."gre_id"
-          where m."id" = $1`,
-        [municipalityId]
+      await client.query(
+        `insert into "entity" (
+          "id", "code", "name", "entity_type", "gre_id", "municipality_id", "updated_at"
+        ) values ($1, $2, $3, 'ESCOLA', $4, $5, current_timestamp)`,
+        [entityId, "ENT-ESC-001", "Unidade Escolar Teste", greId, municipalityId]
+      );
+      await client.query(
+        `insert into "entity" (
+          "id", "code", "name", "entity_type", "gre_id", "municipality_id", "parent_entity_id", "updated_at"
+        ) values ($1, $2, $3, 'ANEXO', $4, $5, $6, current_timestamp)`,
+        [childEntityId, "ENT-ANX-001", "Anexo Escolar Teste", greId, municipalityId, entityId]
+      );
+      await client.query(
+        `insert into "entity" (
+          "id", "code", "name", "entity_type", "gre_id", "updated_at"
+        ) values ($1, $2, $3, 'SECRETARIA', $4, current_timestamp)`,
+        [randomUUID(), "ENT-SEC-001", "Secretaria Administrativa", greId]
       );
 
-      expect(linkedRows.rows).toEqual([{ municipality_code: "2211001", gre_code: "GRE-01" }]);
+      const linkedRows = await client.query<{
+        entity_code: string;
+        entity_type: string;
+        municipality_code: string | null;
+        entity_gre_code: string;
+        municipality_gre_code: string | null;
+        parent_code: string | null;
+      }>(
+        `select e."code" as entity_code,
+                e."entity_type"::text as entity_type,
+                m."ibge_code" as municipality_code,
+                entity_gre."code" as entity_gre_code,
+                municipality_gre."code" as municipality_gre_code,
+                parent."code" as parent_code
+           from "entity" e
+           join "gre" entity_gre on entity_gre."id" = e."gre_id"
+      left join "municipality" m on m."id" = e."municipality_id"
+      left join "gre" municipality_gre on municipality_gre."id" = m."gre_id"
+      left join "entity" parent on parent."id" = e."parent_entity_id"
+          where e."id" = $1`,
+        [childEntityId]
+      );
+
+      expect(linkedRows.rows).toEqual([
+        {
+          entity_code: "ENT-ANX-001",
+          entity_type: "ANEXO",
+          municipality_code: "2211001",
+          entity_gre_code: "GRE-01",
+          municipality_gre_code: "GRE-01",
+          parent_code: "ENT-ESC-001"
+        }
+      ]);
 
       await expect(
         client.query(
@@ -96,7 +160,7 @@ describe("catalog location migration", () => {
       await expect(
         client.query(
           `insert into "gre" ("id", "code", "name", "updated_at") values ($1, $2, $3, current_timestamp)`,
-          [randomUUID(), "gre-02", "GRE com Codigo Minusculo"]
+          [randomUUID(), "gre-03", "GRE com Codigo Minusculo"]
         )
       ).rejects.toThrow(/gre_code_public_format/);
 
@@ -126,6 +190,85 @@ describe("catalog location migration", () => {
           [randomUUID(), "2207702", "Municipio Sem GRE", randomUUID()]
         )
       ).rejects.toThrow(/municipality_gre_id_fkey/);
+
+      await expect(
+        client.query(
+          `insert into "entity" (
+            "id", "code", "name", "entity_type", "gre_id", "municipality_id", "updated_at"
+          ) values ($1, $2, $3, 'ESCOLA', $4, $5, current_timestamp)`,
+          [randomUUID(), "ENT-ESC-001", "Entidade Duplicada", greId, municipalityId]
+        )
+      ).rejects.toThrow(/entity_code_key/);
+
+      await expect(
+        client.query(
+          `insert into "entity" (
+            "id", "code", "name", "entity_type", "gre_id", "municipality_id", "updated_at"
+          ) values ($1, $2, $3, 'ESCOLA', $4, $5, current_timestamp)`,
+          [randomUUID(), "ent-esc-002", "Codigo Minusculo", greId, municipalityId]
+        )
+      ).rejects.toThrow(/entity_code_public_format/);
+
+      await expect(
+        client.query(
+          `insert into "entity" (
+            "id", "code", "name", "entity_type", "gre_id", "municipality_id", "updated_at"
+          ) values ($1, $2, $3, 'ESCOLA', $4, $5, current_timestamp)`,
+          [randomUUID(), "ENT-ESC-002", "  ", greId, municipalityId]
+        )
+      ).rejects.toThrow(/entity_name_not_blank/);
+
+      await expect(
+        client.query(
+          `insert into "entity" (
+            "id", "code", "name", "entity_type", "gre_id", "municipality_id", "updated_at"
+          ) values ($1, $2, $3, 'ESCOLA', $4, $5, current_timestamp)`,
+          [randomUUID(), "ENT-ESC-003", "Entidade Sem GRE", randomUUID(), municipalityId]
+        )
+      ).rejects.toThrow(/entity_gre_id_fkey/);
+
+      await expect(
+        client.query(
+          `insert into "entity" (
+            "id", "code", "name", "entity_type", "gre_id", "municipality_id", "updated_at"
+          ) values ($1, $2, $3, 'ESCOLA', $4, $5, current_timestamp)`,
+          [randomUUID(), "ENT-ESC-004", "Entidade Sem Municipio", greId, randomUUID()]
+        )
+      ).rejects.toThrow(/entity_municipality_id_fkey/);
+
+      await expect(
+        client.query(
+          `insert into "entity" (
+            "id", "code", "name", "entity_type", "gre_id", "municipality_id", "updated_at"
+          ) values ($1, $2, $3, 'ESCOLA', $4, $5, current_timestamp)`,
+          [randomUUID(), "ENT-ESC-005", "Entidade Com GRE Divergente", secondGreId, municipalityId]
+        )
+      ).rejects.toThrow(/entity_municipality_gre_consistency_fkey/);
+
+      await expect(
+        client.query(
+          `insert into "entity" (
+            "id", "code", "name", "entity_type", "gre_id", "municipality_id", "parent_entity_id", "updated_at"
+          ) values ($1, $2, $3, 'ANEXO', $4, $5, $6, current_timestamp)`,
+          [
+            randomUUID(),
+            "ENT-ANX-002",
+            "Anexo Sem Entidade Pai",
+            greId,
+            municipalityId,
+            randomUUID()
+          ]
+        )
+      ).rejects.toThrow(/entity_parent_entity_id_fkey/);
+
+      await expect(
+        client.query(
+          `insert into "entity" (
+            "id", "code", "name", "entity_type", "gre_id", "municipality_id", "parent_entity_id", "updated_at"
+          ) values ($1, $2, $3, 'ESCOLA', $4, $5, $1, current_timestamp)`,
+          [randomUUID(), "ENT-ESC-006", "Entidade Pai Dela Mesma", greId, municipalityId]
+        )
+      ).rejects.toThrow(/entity_parent_not_self/);
     } finally {
       await client.end().catch(() => undefined);
       await postgres.stop();
