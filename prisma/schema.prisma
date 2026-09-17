@@ -39,6 +39,12 @@ enum EntityType {
   INSTITUICAO_FILANTROPICA
 }
 
+enum MaterialControlType {
+  INDIVIDUAL
+  QUANTITATIVO
+  CONSUMO
+}
+
 model Person {
   id          String        @id @default(uuid()) @db.Uuid
   displayName String        @map("display_name") @db.VarChar(160)
@@ -198,12 +204,35 @@ model Entity {
 }
 
 model MaterialClass {
-  id        String   @id @default(uuid()) @db.Uuid
-  code      String   @unique @db.VarChar(64)
-  name      String   @db.VarChar(160)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id                String             @id @default(uuid()) @db.Uuid
+  code              String             @unique @db.VarChar(64)
+  name              String             @db.VarChar(160)
+  active            Boolean            @default(true)
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  singularMaterials MaterialSingular[]
 
   @@map("material_class")
+}
+
+model MaterialSingular {
+  id                          String              @id @default(uuid()) @db.Uuid
+  code                        String              @unique @db.VarChar(64)
+  name                        String              @db.VarChar(180)
+  classId                     String              @map("class_id") @db.Uuid
+  controlType                 MaterialControlType @map("control_type")
+  isTombable                  Boolean             @default(false) @map("is_tombable")
+  patrimonialGroupCode        String?             @map("patrimonial_group_code") @db.VarChar(64)
+  allowsCorrectiveMaintenance Boolean             @default(false) @map("allows_corrective_maintenance")
+  allowsPreventiveMaintenance Boolean             @default(false) @map("allows_preventive_maintenance")
+  allowsReconditioning        Boolean             @default(false) @map("allows_reconditioning")
+  allowsReplacement           Boolean             @default(false) @map("allows_replacement")
+  active                      Boolean             @default(true)
+  createdAt                   DateTime            @default(now()) @map("created_at")
+  updatedAt                   DateTime            @updatedAt @map("updated_at")
+  materialClass               MaterialClass       @relation(fields: [classId], references: [id], onDelete: Restrict)
+
+  @@index([classId])
+  @@index([controlType])
+  @@map("material_singular")
 }
