@@ -55,6 +55,13 @@ enum ContractChangeType {
   APOSTILAMENTO
 }
 
+enum ContractBalanceMovementType {
+  CONTRATACAO
+  ADITIVO
+  APOSTILAMENTO
+  AJUSTE
+}
+
 enum MaterialConfigurationType {
   KIT
   COMPOSTO
@@ -318,20 +325,21 @@ model Contract {
 }
 
 model ContractItem {
-  id                      String                 @id @default(uuid()) @db.Uuid
-  code                    String                 @unique @db.VarChar(64)
-  contractId              String                 @map("contract_id") @db.Uuid
-  lineNumber              Int                    @map("line_number")
-  materialSingularId      String?                @map("material_singular_id") @db.Uuid
-  materialConfigurationId String?                @map("material_configuration_id") @db.Uuid
-  contractedQuantity      Int                    @map("contracted_quantity")
-  unitPrice               Decimal                @map("unit_price") @db.Decimal(14, 2)
-  active                  Boolean                @default(true)
-  createdAt               DateTime               @default(now()) @map("created_at")
-  updatedAt               DateTime               @updatedAt @map("updated_at")
-  contract                Contract               @relation(fields: [contractId], references: [id], onDelete: Restrict)
-  materialSingular        MaterialSingular?      @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
-  materialConfiguration   MaterialConfiguration? @relation(fields: [materialConfigurationId], references: [id], onDelete: Restrict)
+  id                      String                    @id @default(uuid()) @db.Uuid
+  code                    String                    @unique @db.VarChar(64)
+  contractId              String                    @map("contract_id") @db.Uuid
+  lineNumber              Int                       @map("line_number")
+  materialSingularId      String?                   @map("material_singular_id") @db.Uuid
+  materialConfigurationId String?                   @map("material_configuration_id") @db.Uuid
+  contractedQuantity      Int                       @map("contracted_quantity")
+  unitPrice               Decimal                   @map("unit_price") @db.Decimal(14, 2)
+  active                  Boolean                   @default(true)
+  createdAt               DateTime                  @default(now()) @map("created_at")
+  updatedAt               DateTime                  @updatedAt @map("updated_at")
+  contract                Contract                  @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  materialSingular        MaterialSingular?         @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
+  materialConfiguration   MaterialConfiguration?    @relation(fields: [materialConfigurationId], references: [id], onDelete: Restrict)
+  balanceMovements        ContractBalanceMovement[]
 
   @@unique([contractId, lineNumber], map: "contract_item_contract_line_number_key")
   @@index([contractId])
@@ -360,21 +368,43 @@ model ContractDesignation {
 }
 
 model ContractChange {
-  id               String             @id @default(uuid()) @db.Uuid
-  contractId       String             @map("contract_id") @db.Uuid
+  id               String                    @id @default(uuid()) @db.Uuid
+  contractId       String                    @map("contract_id") @db.Uuid
   type             ContractChangeType
-  code             String             @unique @db.VarChar(64)
-  summary          String             @db.VarChar(500)
-  effectiveOn      DateTime           @map("effective_on") @db.Date
-  signedOn         DateTime?          @map("signed_on") @db.Date
-  processReference String?            @map("process_reference") @db.VarChar(120)
-  active           Boolean            @default(true)
-  createdAt        DateTime           @default(now()) @map("created_at")
-  updatedAt        DateTime           @updatedAt @map("updated_at")
-  contract         Contract           @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  code             String                    @unique @db.VarChar(64)
+  summary          String                    @db.VarChar(500)
+  effectiveOn      DateTime                  @map("effective_on") @db.Date
+  signedOn         DateTime?                 @map("signed_on") @db.Date
+  processReference String?                   @map("process_reference") @db.VarChar(120)
+  active           Boolean                   @default(true)
+  createdAt        DateTime                  @default(now()) @map("created_at")
+  updatedAt        DateTime                  @updatedAt @map("updated_at")
+  contract         Contract                  @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  balanceMovements ContractBalanceMovement[]
 
   @@index([contractId])
   @@index([type])
   @@index([contractId, effectiveOn], map: "contract_change_contract_effective_lookup_idx")
   @@map("contract_change")
+}
+
+model ContractBalanceMovement {
+  id               String                      @id @default(uuid()) @db.Uuid
+  code             String                      @unique @db.VarChar(80)
+  contractItemId   String                      @map("contract_item_id") @db.Uuid
+  contractChangeId String?                     @map("contract_change_id") @db.Uuid
+  type             ContractBalanceMovementType
+  quantityDelta    Int                         @map("quantity_delta")
+  amountDelta      Decimal                     @map("amount_delta") @db.Decimal(14, 2)
+  occurredAt       DateTime                    @map("occurred_at")
+  summary          String                      @db.VarChar(500)
+  createdAt        DateTime                    @default(now()) @map("created_at")
+  contractItem     ContractItem                @relation(fields: [contractItemId], references: [id], onDelete: Restrict)
+  contractChange   ContractChange?             @relation(fields: [contractChangeId], references: [id], onDelete: Restrict)
+
+  @@index([contractItemId])
+  @@index([contractChangeId])
+  @@index([type])
+  @@index([contractItemId, occurredAt], map: "contract_balance_movement_item_time_idx")
+  @@map("contract_balance_movement")
 }
