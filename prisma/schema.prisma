@@ -340,6 +340,7 @@ model ContractItem {
   materialSingular        MaterialSingular?         @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
   materialConfiguration   MaterialConfiguration?    @relation(fields: [materialConfigurationId], references: [id], onDelete: Restrict)
   balanceMovements        ContractBalanceMovement[]
+  balancePosition         ContractBalancePosition?
 
   @@unique([contractId, lineNumber], map: "contract_item_contract_line_number_key")
   @@index([contractId])
@@ -407,4 +408,21 @@ model ContractBalanceMovement {
   @@index([type])
   @@index([contractItemId, occurredAt], map: "contract_balance_movement_item_time_idx")
   @@map("contract_balance_movement")
+}
+
+model ContractBalancePosition {
+  id                String       @id @default(uuid()) @db.Uuid
+  contractItemId    String       @unique @map("contract_item_id") @db.Uuid
+  totalQuantity     Int          @map("total_quantity")
+  committedQuantity Int          @default(0) @map("committed_quantity")
+  availableQuantity Int          @map("available_quantity")
+  totalAmount       Decimal      @map("total_amount") @db.Decimal(14, 2)
+  committedAmount   Decimal      @default(0) @map("committed_amount") @db.Decimal(14, 2)
+  availableAmount   Decimal      @map("available_amount") @db.Decimal(14, 2)
+  version           Int          @default(1)
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+  contractItem      ContractItem @relation(fields: [contractItemId], references: [id], onDelete: Restrict)
+
+  @@map("contract_balance_position")
 }

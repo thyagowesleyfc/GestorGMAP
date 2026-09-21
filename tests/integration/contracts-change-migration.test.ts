@@ -44,7 +44,7 @@ describe("contracts change migration", () => {
         `select table_name
            from information_schema.tables
           where table_schema = 'public'
-            and table_name in ('supply_order', 'contract_balance_position')`
+            and table_name = 'supply_order'`
       );
 
       expect(forbiddenTables.rows).toEqual([]);
