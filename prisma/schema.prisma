@@ -50,6 +50,11 @@ enum ContractDesignationRole {
   FISCAL
 }
 
+enum ContractChangeType {
+  ADITIVO
+  APOSTILAMENTO
+}
+
 enum MaterialConfigurationType {
   KIT
   COMPOSTO
@@ -306,6 +311,7 @@ model Contract {
   supplier      Supplier              @relation(fields: [supplierId], references: [id], onDelete: Restrict)
   items         ContractItem[]
   designations  ContractDesignation[]
+  changes       ContractChange[]
 
   @@index([supplierId])
   @@map("contract")
@@ -351,4 +357,24 @@ model ContractDesignation {
   @@index([role])
   @@index([contractId, role, startsOn, endsOn], map: "contract_designation_temporal_lookup_idx")
   @@map("contract_designation")
+}
+
+model ContractChange {
+  id               String             @id @default(uuid()) @db.Uuid
+  contractId       String             @map("contract_id") @db.Uuid
+  type             ContractChangeType
+  code             String             @unique @db.VarChar(64)
+  summary          String             @db.VarChar(500)
+  effectiveOn      DateTime           @map("effective_on") @db.Date
+  signedOn         DateTime?          @map("signed_on") @db.Date
+  processReference String?            @map("process_reference") @db.VarChar(120)
+  active           Boolean            @default(true)
+  createdAt        DateTime           @default(now()) @map("created_at")
+  updatedAt        DateTime           @updatedAt @map("updated_at")
+  contract         Contract           @relation(fields: [contractId], references: [id], onDelete: Restrict)
+
+  @@index([contractId])
+  @@index([type])
+  @@index([contractId, effectiveOn], map: "contract_change_contract_effective_lookup_idx")
+  @@map("contract_change")
 }
