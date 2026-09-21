@@ -271,3 +271,15 @@ model MaterialConfigurationComponent {
   @@index([materialSingularId])
   @@map("material_configuration_component")
 }
+
+model Supplier {
+  id        String   @id @default(uuid()) @db.Uuid
+  code      String   @unique @db.VarChar(64)
+  name      String   @db.VarChar(180)
+  taxId     String?  @unique @map("tax_id") @db.VarChar(14)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("supplier")
+}
