@@ -237,6 +237,7 @@ model MaterialSingular {
   updatedAt                   DateTime                         @updatedAt @map("updated_at")
   materialClass               MaterialClass                    @relation(fields: [classId], references: [id], onDelete: Restrict)
   configurationComponents     MaterialConfigurationComponent[]
+  contractItems               ContractItem[]
 
   @@index([classId])
   @@index([controlType])
@@ -252,6 +253,7 @@ model MaterialConfiguration {
   createdAt         DateTime                         @default(now()) @map("created_at")
   updatedAt         DateTime                         @updatedAt @map("updated_at")
   components        MaterialConfigurationComponent[]
+  contractItems     ContractItem[]
 
   @@index([configurationType])
   @@map("material_configuration")
@@ -273,13 +275,55 @@ model MaterialConfigurationComponent {
 }
 
 model Supplier {
-  id        String   @id @default(uuid()) @db.Uuid
-  code      String   @unique @db.VarChar(64)
-  name      String   @db.VarChar(180)
-  taxId     String?  @unique @map("tax_id") @db.VarChar(14)
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id        String     @id @default(uuid()) @db.Uuid
+  code      String     @unique @db.VarChar(64)
+  name      String     @db.VarChar(180)
+  taxId     String?    @unique @map("tax_id") @db.VarChar(14)
+  active    Boolean    @default(true)
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+  contracts Contract[]
 
   @@map("supplier")
+}
+
+model Contract {
+  id            String         @id @default(uuid()) @db.Uuid
+  code          String         @unique @db.VarChar(64)
+  supplierId    String         @map("supplier_id") @db.Uuid
+  object        String         @db.VarChar(500)
+  validityStart DateTime       @map("validity_start") @db.Date
+  validityEnd   DateTime       @map("validity_end") @db.Date
+  active        Boolean        @default(true)
+  version       Int            @default(1)
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  supplier      Supplier       @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  items         ContractItem[]
+
+  @@index([supplierId])
+  @@map("contract")
+}
+
+model ContractItem {
+  id                      String                 @id @default(uuid()) @db.Uuid
+  code                    String                 @unique @db.VarChar(64)
+  contractId              String                 @map("contract_id") @db.Uuid
+  lineNumber              Int                    @map("line_number")
+  materialSingularId      String?                @map("material_singular_id") @db.Uuid
+  materialConfigurationId String?                @map("material_configuration_id") @db.Uuid
+  contractedQuantity      Int                    @map("contracted_quantity")
+  unitPrice               Decimal                @map("unit_price") @db.Decimal(14, 2)
+  active                  Boolean                @default(true)
+  createdAt               DateTime               @default(now()) @map("created_at")
+  updatedAt               DateTime               @updatedAt @map("updated_at")
+  contract                Contract               @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  materialSingular        MaterialSingular?      @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
+  materialConfiguration   MaterialConfiguration? @relation(fields: [materialConfigurationId], references: [id], onDelete: Restrict)
+
+  @@unique([contractId, lineNumber], map: "contract_item_contract_line_number_key")
+  @@index([contractId])
+  @@index([materialSingularId])
+  @@index([materialConfigurationId])
+  @@map("contract_item")
 }
