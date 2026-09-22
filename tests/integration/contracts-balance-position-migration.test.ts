@@ -44,15 +44,6 @@ describe("contracts balance position migration", () => {
         "contract_balance_position"
       ]);
 
-      const forbiddenTables = await client.query<{ table_name: string }>(
-        `select table_name
-           from information_schema.tables
-          where table_schema = 'public'
-            and table_name = 'supply_order'`
-      );
-
-      expect(forbiddenTables.rows).toEqual([]);
-
       const constraints = await client.query<{ conname: string }>(
         `select conname
            from pg_constraint

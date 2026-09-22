@@ -62,6 +62,10 @@ enum ContractBalanceMovementType {
   AJUSTE
 }
 
+enum SupplyOrderStatus {
+  EMITIDA
+}
+
 enum MaterialConfigurationType {
   KIT
   COMPOSTO
@@ -319,6 +323,7 @@ model Contract {
   items         ContractItem[]
   designations  ContractDesignation[]
   changes       ContractChange[]
+  supplyOrders  SupplyOrder[]
 
   @@index([supplierId])
   @@map("contract")
@@ -341,8 +346,10 @@ model ContractItem {
   materialConfiguration   MaterialConfiguration?    @relation(fields: [materialConfigurationId], references: [id], onDelete: Restrict)
   balanceMovements        ContractBalanceMovement[]
   balancePosition         ContractBalancePosition?
+  supplyOrderItems        SupplyOrderItem[]
 
   @@unique([contractId, lineNumber], map: "contract_item_contract_line_number_key")
+  @@unique([id, contractId], map: "contract_item_id_contract_id_key")
   @@index([contractId])
   @@index([materialSingularId])
   @@index([materialConfigurationId])
@@ -425,4 +432,42 @@ model ContractBalancePosition {
   contractItem      ContractItem @relation(fields: [contractItemId], references: [id], onDelete: Restrict)
 
   @@map("contract_balance_position")
+}
+
+model SupplyOrder {
+  id         String            @id @default(uuid()) @db.Uuid
+  code       String            @unique @db.VarChar(64)
+  contractId String            @map("contract_id") @db.Uuid
+  status     SupplyOrderStatus @default(EMITIDA)
+  issuedAt   DateTime          @map("issued_at")
+  version    Int               @default(1)
+  createdAt  DateTime          @default(now()) @map("created_at")
+  updatedAt  DateTime          @updatedAt @map("updated_at")
+  contract   Contract          @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  items      SupplyOrderItem[]
+
+  @@unique([id, contractId], map: "supply_order_id_contract_id_key")
+  @@index([contractId])
+  @@index([status])
+  @@map("supply_order")
+}
+
+model SupplyOrderItem {
+  id             String       @id @default(uuid()) @db.Uuid
+  supplyOrderId  String       @map("supply_order_id") @db.Uuid
+  contractId     String       @map("contract_id") @db.Uuid
+  contractItemId String       @map("contract_item_id") @db.Uuid
+  lineNumber     Int          @map("line_number")
+  quantity       Int
+  unitPrice      Decimal      @map("unit_price") @db.Decimal(14, 2)
+  totalAmount    Decimal      @map("total_amount") @db.Decimal(14, 2)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  supplyOrder    SupplyOrder  @relation(fields: [supplyOrderId], references: [id], onDelete: Restrict)
+  contractItem   ContractItem @relation(fields: [contractItemId], references: [id], onDelete: Restrict)
+
+  @@unique([supplyOrderId, lineNumber], map: "supply_order_item_order_line_key")
+  @@index([contractId])
+  @@index([contractItemId])
+  @@map("supply_order_item")
 }

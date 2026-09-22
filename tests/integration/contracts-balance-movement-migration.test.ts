@@ -40,15 +40,6 @@ describe("contracts balance movement migration", () => {
 
       expect(tables.rows.map((row) => row.table_name)).toEqual(["contract_balance_movement"]);
 
-      const forbiddenTables = await client.query<{ table_name: string }>(
-        `select table_name
-           from information_schema.tables
-          where table_schema = 'public'
-            and table_name = 'supply_order'`
-      );
-
-      expect(forbiddenTables.rows).toEqual([]);
-
       const enumValues = await client.query<{ enumlabel: string }>(
         `select enumlabel
            from pg_enum
