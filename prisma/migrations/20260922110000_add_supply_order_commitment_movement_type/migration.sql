@@ -1,0 +1,1 @@
+ALTER TYPE "ContractBalanceMovementType" ADD VALUE 'COMPROMETIMENTO_OF';

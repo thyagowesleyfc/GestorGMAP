@@ -60,6 +60,7 @@ enum ContractBalanceMovementType {
   ADITIVO
   APOSTILAMENTO
   AJUSTE
+  COMPROMETIMENTO_OF
 }
 
 enum SupplyOrderStatus {
