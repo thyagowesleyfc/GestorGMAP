@@ -64,6 +64,14 @@ enum ContractBalanceMovementType {
 
 enum SupplyOrderStatus {
   EMITIDA
+  CANCELADA
+}
+
+enum SupplyOrderCancellationStatus {
+  PREPARADA
+  AUTORIZADA
+  EFETIVADA
+  REJEITADA
 }
 
 enum MaterialConfigurationType {
@@ -435,16 +443,17 @@ model ContractBalancePosition {
 }
 
 model SupplyOrder {
-  id         String            @id @default(uuid()) @db.Uuid
-  code       String            @unique @db.VarChar(64)
-  contractId String            @map("contract_id") @db.Uuid
-  status     SupplyOrderStatus @default(EMITIDA)
-  issuedAt   DateTime          @map("issued_at")
-  version    Int               @default(1)
-  createdAt  DateTime          @default(now()) @map("created_at")
-  updatedAt  DateTime          @updatedAt @map("updated_at")
-  contract   Contract          @relation(fields: [contractId], references: [id], onDelete: Restrict)
-  items      SupplyOrderItem[]
+  id           String                   @id @default(uuid()) @db.Uuid
+  code         String                   @unique @db.VarChar(64)
+  contractId   String                   @map("contract_id") @db.Uuid
+  status       SupplyOrderStatus        @default(EMITIDA)
+  issuedAt     DateTime                 @map("issued_at")
+  version      Int                      @default(1)
+  createdAt    DateTime                 @default(now()) @map("created_at")
+  updatedAt    DateTime                 @updatedAt @map("updated_at")
+  contract     Contract                 @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  items        SupplyOrderItem[]
+  cancellation SupplyOrderCancellation?
 
   @@unique([id, contractId], map: "supply_order_id_contract_id_key")
   @@index([contractId])
@@ -470,4 +479,21 @@ model SupplyOrderItem {
   @@index([contractId])
   @@index([contractItemId])
   @@map("supply_order_item")
+}
+
+model SupplyOrderCancellation {
+  id            String                        @id @default(uuid()) @db.Uuid
+  supplyOrderId String                        @unique @map("supply_order_id") @db.Uuid
+  status        SupplyOrderCancellationStatus @default(PREPARADA)
+  reason        String                        @db.VarChar(500)
+  preparedAt    DateTime                      @map("prepared_at")
+  authorizedAt  DateTime?                     @map("authorized_at")
+  effectiveAt   DateTime?                     @map("effective_at")
+  rejectedAt    DateTime?                     @map("rejected_at")
+  createdAt     DateTime                      @default(now()) @map("created_at")
+  updatedAt     DateTime                      @updatedAt @map("updated_at")
+  supplyOrder   SupplyOrder                   @relation(fields: [supplyOrderId], references: [id], onDelete: Restrict)
+
+  @@index([status])
+  @@map("supply_order_cancellation")
 }

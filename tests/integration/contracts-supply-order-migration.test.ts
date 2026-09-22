@@ -51,7 +51,7 @@ describe("contracts supply order migration", () => {
           order by enumlabel`
       );
 
-      expect(enumValues.rows.map((row) => row.enumlabel)).toEqual(["EMITIDA"]);
+      expect(enumValues.rows.map((row) => row.enumlabel)).toEqual(["CANCELADA", "EMITIDA"]);
 
       const constraints = await client.query<{ conname: string }>(
         `select conname
