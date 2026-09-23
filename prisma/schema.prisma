@@ -61,6 +61,7 @@ enum ContractBalanceMovementType {
   APOSTILAMENTO
   AJUSTE
   COMPROMETIMENTO_OF
+  CANCELAMENTO_OF
 }
 
 enum SupplyOrderStatus {
