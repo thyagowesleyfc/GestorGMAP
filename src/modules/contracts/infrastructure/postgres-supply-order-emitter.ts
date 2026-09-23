@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 
 import { Pool, type PoolClient } from "pg";
 
@@ -21,7 +21,20 @@ type ContractItemIdentity = {
   contract_id: string;
 };
 
+type IdempotencyRow = {
+  id: string;
+  request_hash: string;
+  status: "IN_PROGRESS" | "SUCCEEDED" | "FAILED";
+  result_json: unknown;
+};
+
+type IdempotencyReservation =
+  | { kind: "NEW"; id: string }
+  | { kind: "REPLAY"; result: EmitSupplyOrderResult }
+  | { kind: "CONFLICT" };
+
 const UNIQUE_VIOLATION = "23505";
+const EMIT_SUPPLY_ORDER_COMMAND = "contracts.emit_supply_order";
 
 export class PostgresSupplyOrderEmitter implements SupplyOrderEmitter {
   constructor(private readonly pool: Pool) {}
@@ -31,7 +44,20 @@ export class PostgresSupplyOrderEmitter implements SupplyOrderEmitter {
 
     try {
       await client.query("begin");
+
+      const reservation = await this.reserveIdempotency(client, input);
+      if (reservation.kind === "REPLAY") {
+        await client.query("commit");
+        return reservation.result;
+      }
+
+      if (reservation.kind === "CONFLICT") {
+        await client.query("commit");
+        return { ok: false, reason: "IDEMPOTENCY_KEY_CONFLICT" };
+      }
+
       const result = await this.emitInTransaction(client, input);
+      await this.storeIdempotencyResult(client, reservation.id, result);
       await client.query("commit");
       return result;
     } catch (error) {
@@ -47,6 +73,62 @@ export class PostgresSupplyOrderEmitter implements SupplyOrderEmitter {
     } finally {
       client.release();
     }
+  }
+
+  private async reserveIdempotency(
+    client: PoolClient,
+    input: EmitSupplyOrderCommand
+  ): Promise<IdempotencyReservation> {
+    const requestHash = hashSupplyOrderCommand(input);
+    const idempotencyId = randomUUID();
+
+    const inserted = await client.query<{ id: string }>(
+      `insert into "command_idempotency" (
+        "id", "command_name", "idempotency_key", "request_hash", "updated_at"
+      ) values ($1, $2, $3, $4, current_timestamp)
+      on conflict ("command_name", "idempotency_key") do nothing
+      returning "id"`,
+      [idempotencyId, EMIT_SUPPLY_ORDER_COMMAND, input.commandId, requestHash]
+    );
+
+    if (inserted.rows.length === 1) {
+      return { kind: "NEW", id: inserted.rows[0].id };
+    }
+
+    const existing = await client.query<IdempotencyRow>(
+      `select "id", "request_hash", "status", "result_json"
+         from "command_idempotency"
+        where "command_name" = $1
+          and "idempotency_key" = $2
+        for update`,
+      [EMIT_SUPPLY_ORDER_COMMAND, input.commandId]
+    );
+    const row = existing.rows[0];
+
+    if (row === undefined || row.request_hash !== requestHash) {
+      return { kind: "CONFLICT" };
+    }
+
+    if (row.status === "SUCCEEDED" && row.result_json !== null) {
+      return { kind: "REPLAY", result: parseStoredResult(row.result_json) };
+    }
+
+    return { kind: "CONFLICT" };
+  }
+
+  private async storeIdempotencyResult(
+    client: PoolClient,
+    idempotencyId: string,
+    result: EmitSupplyOrderResult
+  ): Promise<void> {
+    await client.query(
+      `update "command_idempotency"
+          set "status" = 'SUCCEEDED',
+              "result_json" = $2::jsonb,
+              "updated_at" = current_timestamp
+        where "id" = $1`,
+      [idempotencyId, JSON.stringify(result)]
+    );
   }
 
   private async emitInTransaction(
@@ -208,6 +290,40 @@ export class PostgresSupplyOrderEmitter implements SupplyOrderEmitter {
   }
 }
 
+function hashSupplyOrderCommand(input: EmitSupplyOrderCommand): string {
+  const payload = {
+    code: input.code,
+    contractId: input.contractId,
+    items: input.items.map((item) => ({
+      contractItemId: item.contractItemId,
+      quantity: item.quantity,
+      lineNumber: item.lineNumber
+    }))
+  };
+
+  return createHash("sha256").update(JSON.stringify(payload)).digest("hex");
+}
+
+function parseStoredResult(value: unknown): EmitSupplyOrderResult {
+  if (isEmitSupplyOrderResult(value)) {
+    return value;
+  }
+
+  throw new Error("Stored idempotency result is invalid.");
+}
+
+function isEmitSupplyOrderResult(value: unknown): value is EmitSupplyOrderResult {
+  if (typeof value !== "object" || value === null || !("ok" in value)) {
+    return false;
+  }
+
+  if (value.ok === true) {
+    return typeof (value as { supplyOrderId?: unknown }).supplyOrderId === "string";
+  }
+
+  return typeof (value as { reason?: unknown }).reason === "string";
+}
+
 function decimalToCents(value: string): bigint {
   const sign = value.startsWith("-") ? -1n : 1n;
   const unsignedValue = value.replace(/^-/, "");
@@ -227,5 +343,10 @@ function centsToDecimal(value: bigint): string {
 }
 
 function isPgError(error: unknown): error is { code: string; constraint?: string } {
-  return typeof error === "object" && error !== null && "code" in error;
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    typeof (error as { code?: unknown }).code === "string"
+  );
 }

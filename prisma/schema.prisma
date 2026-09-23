@@ -75,6 +75,12 @@ enum SupplyOrderCancellationStatus {
   REJEITADA
 }
 
+enum CommandIdempotencyStatus {
+  IN_PROGRESS
+  SUCCEEDED
+  FAILED
+}
+
 enum MaterialConfigurationType {
   KIT
   COMPOSTO
@@ -497,4 +503,19 @@ model SupplyOrderCancellation {
 
   @@index([status])
   @@map("supply_order_cancellation")
+}
+
+model CommandIdempotency {
+  id             String                   @id @default(uuid()) @db.Uuid
+  commandName    String                   @map("command_name") @db.VarChar(120)
+  idempotencyKey String                   @map("idempotency_key") @db.VarChar(160)
+  requestHash    String                   @map("request_hash") @db.Char(64)
+  status         CommandIdempotencyStatus @default(IN_PROGRESS)
+  resultJson     Json?                    @map("result_json")
+  createdAt      DateTime                 @default(now()) @map("created_at")
+  updatedAt      DateTime                 @updatedAt @map("updated_at")
+
+  @@unique([commandName, idempotencyKey], map: "command_idempotency_command_key")
+  @@index([status])
+  @@map("command_idempotency")
 }

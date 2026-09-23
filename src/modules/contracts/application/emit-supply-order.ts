@@ -4,6 +4,7 @@ export type EmitSupplyOrderItemInput = {
 };
 
 export type EmitSupplyOrderInput = {
+  commandId: string;
   code: string;
   contractId: string;
   issuedAt?: Date;
@@ -11,6 +12,7 @@ export type EmitSupplyOrderInput = {
 };
 
 export type EmitSupplyOrderCommand = {
+  commandId: string;
   code: string;
   contractId: string;
   issuedAt: Date;
@@ -18,6 +20,8 @@ export type EmitSupplyOrderCommand = {
 };
 
 export type EmitSupplyOrderFailureReason =
+  | "INVALID_COMMAND_ID"
+  | "IDEMPOTENCY_KEY_CONFLICT"
   | "EMPTY_ITEMS"
   | "INVALID_ITEM_QUANTITY"
   | "DUPLICATE_CONTRACT_ITEM"
@@ -46,6 +50,12 @@ export class EmitSupplyOrder {
   constructor(private readonly emitter: SupplyOrderEmitter) {}
 
   async execute(input: EmitSupplyOrderInput): Promise<EmitSupplyOrderResult> {
+    const commandId = input.commandId.trim();
+
+    if (commandId.length === 0) {
+      return { ok: false, reason: "INVALID_COMMAND_ID" };
+    }
+
     if (input.items.length === 0) {
       return { ok: false, reason: "EMPTY_ITEMS" };
     }
@@ -81,6 +91,7 @@ export class EmitSupplyOrder {
     }
 
     return this.emitter.emit({
+      commandId,
       code: input.code,
       contractId: input.contractId,
       issuedAt: input.issuedAt ?? new Date(),
