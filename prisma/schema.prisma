@@ -87,6 +87,16 @@ enum MaterialConfigurationType {
   COMPOSTO
 }
 
+enum ReceivingEntryStatus {
+  REGISTRADA
+}
+
+enum ReceivingEntryItemOriginType {
+  CONTRATUAL
+  INDENIZATORIO
+  PENDENTE
+}
+
 model Person {
   id          String        @id @default(uuid()) @db.Uuid
   displayName String        @map("display_name") @db.VarChar(160)
@@ -223,20 +233,21 @@ model Municipality {
 }
 
 model Entity {
-  id             String        @id @default(uuid()) @db.Uuid
-  code           String        @unique @db.VarChar(64)
-  name           String        @db.VarChar(180)
-  entityType     EntityType    @map("entity_type")
-  greId          String        @map("gre_id") @db.Uuid
-  municipalityId String?       @map("municipality_id") @db.Uuid
-  parentEntityId String?       @map("parent_entity_id") @db.Uuid
-  active         Boolean       @default(true)
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
-  gre            Gre           @relation(fields: [greId], references: [id], onDelete: Restrict)
-  municipality   Municipality? @relation(fields: [municipalityId], references: [id], onDelete: Restrict)
-  parentEntity   Entity?       @relation("EntityHierarchy", fields: [parentEntityId], references: [id], onDelete: Restrict)
-  childEntities  Entity[]      @relation("EntityHierarchy")
+  id               String           @id @default(uuid()) @db.Uuid
+  code             String           @unique @db.VarChar(64)
+  name             String           @db.VarChar(180)
+  entityType       EntityType       @map("entity_type")
+  greId            String           @map("gre_id") @db.Uuid
+  municipalityId   String?          @map("municipality_id") @db.Uuid
+  parentEntityId   String?          @map("parent_entity_id") @db.Uuid
+  active           Boolean          @default(true)
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+  gre              Gre              @relation(fields: [greId], references: [id], onDelete: Restrict)
+  municipality     Municipality?    @relation(fields: [municipalityId], references: [id], onDelete: Restrict)
+  parentEntity     Entity?          @relation("EntityHierarchy", fields: [parentEntityId], references: [id], onDelete: Restrict)
+  childEntities    Entity[]         @relation("EntityHierarchy")
+  receivingEntries ReceivingEntry[]
 
   @@index([entityType])
   @@index([greId])
@@ -275,6 +286,7 @@ model MaterialSingular {
   materialClass               MaterialClass                    @relation(fields: [classId], references: [id], onDelete: Restrict)
   configurationComponents     MaterialConfigurationComponent[]
   contractItems               ContractItem[]
+  receivingEntryItems         ReceivingEntryItem[]
 
   @@index([classId])
   @@index([controlType])
@@ -282,15 +294,16 @@ model MaterialSingular {
 }
 
 model MaterialConfiguration {
-  id                String                           @id @default(uuid()) @db.Uuid
-  code              String                           @unique @db.VarChar(64)
-  name              String                           @db.VarChar(180)
-  configurationType MaterialConfigurationType        @map("configuration_type")
-  active            Boolean                          @default(true)
-  createdAt         DateTime                         @default(now()) @map("created_at")
-  updatedAt         DateTime                         @updatedAt @map("updated_at")
-  components        MaterialConfigurationComponent[]
-  contractItems     ContractItem[]
+  id                  String                           @id @default(uuid()) @db.Uuid
+  code                String                           @unique @db.VarChar(64)
+  name                String                           @db.VarChar(180)
+  configurationType   MaterialConfigurationType        @map("configuration_type")
+  active              Boolean                          @default(true)
+  createdAt           DateTime                         @default(now()) @map("created_at")
+  updatedAt           DateTime                         @updatedAt @map("updated_at")
+  components          MaterialConfigurationComponent[]
+  contractItems       ContractItem[]
+  receivingEntryItems ReceivingEntryItem[]
 
   @@index([configurationType])
   @@map("material_configuration")
@@ -504,6 +517,48 @@ model SupplyOrderCancellation {
 
   @@index([status])
   @@map("supply_order_cancellation")
+}
+
+model ReceivingEntry {
+  id                String               @id @default(uuid()) @db.Uuid
+  code              String               @unique @db.VarChar(64)
+  receivingEntityId String               @map("receiving_entity_id") @db.Uuid
+  receivedAt        DateTime             @map("received_at")
+  status            ReceivingEntryStatus @default(REGISTRADA)
+  notes             String?              @db.VarChar(500)
+  version           Int                  @default(1)
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+  receivingEntity   Entity               @relation(fields: [receivingEntityId], references: [id], onDelete: Restrict)
+  items             ReceivingEntryItem[]
+
+  @@index([receivingEntityId])
+  @@index([receivedAt])
+  @@index([status])
+  @@map("receiving_entry")
+}
+
+model ReceivingEntryItem {
+  id                      String                       @id @default(uuid()) @db.Uuid
+  receivingEntryId        String                       @map("receiving_entry_id") @db.Uuid
+  lineNumber              Int                          @map("line_number")
+  materialSingularId      String?                      @map("material_singular_id") @db.Uuid
+  materialConfigurationId String?                      @map("material_configuration_id") @db.Uuid
+  originType              ReceivingEntryItemOriginType @default(PENDENTE) @map("origin_type")
+  quantity                Int
+  notes                   String?                      @db.VarChar(500)
+  createdAt               DateTime                     @default(now()) @map("created_at")
+  updatedAt               DateTime                     @updatedAt @map("updated_at")
+  receivingEntry          ReceivingEntry               @relation(fields: [receivingEntryId], references: [id], onDelete: Restrict)
+  materialSingular        MaterialSingular?            @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
+  materialConfiguration   MaterialConfiguration?       @relation(fields: [materialConfigurationId], references: [id], onDelete: Restrict)
+
+  @@unique([receivingEntryId, lineNumber], map: "receiving_entry_item_entry_line_key")
+  @@index([receivingEntryId])
+  @@index([materialSingularId])
+  @@index([materialConfigurationId])
+  @@index([originType])
+  @@map("receiving_entry_item")
 }
 
 model CommandIdempotency {
