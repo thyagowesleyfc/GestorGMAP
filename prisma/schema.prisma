@@ -118,19 +118,20 @@ model Person {
 }
 
 model UserAccount {
-  id                      String                    @id @default(uuid()) @db.Uuid
-  personId                String                    @unique @map("person_id") @db.Uuid
-  loginIdentifier         String                    @unique @map("login_identifier") @db.VarChar(160)
-  status                  UserStatus                @default(ACTIVE)
-  isTechnicalSuperuser    Boolean                   @default(false) @map("is_technical_superuser")
-  createdAt               DateTime                  @default(now()) @map("created_at")
-  updatedAt               DateTime                  @updatedAt @map("updated_at")
-  person                  Person                    @relation(fields: [personId], references: [id], onDelete: Restrict)
-  memberships             TeamMembership[]
-  passwordCredential      PasswordCredential?
-  passwordRecoveries      PasswordRecoveryRequest[]
-  sessions                UserSession[]
-  receivingEntryDocuments ReceivingEntryDocument[]
+  id                                String                             @id @default(uuid()) @db.Uuid
+  personId                          String                             @unique @map("person_id") @db.Uuid
+  loginIdentifier                   String                             @unique @map("login_identifier") @db.VarChar(160)
+  status                            UserStatus                         @default(ACTIVE)
+  isTechnicalSuperuser              Boolean                            @default(false) @map("is_technical_superuser")
+  createdAt                         DateTime                           @default(now()) @map("created_at")
+  updatedAt                         DateTime                           @updatedAt @map("updated_at")
+  person                            Person                             @relation(fields: [personId], references: [id], onDelete: Restrict)
+  memberships                       TeamMembership[]
+  passwordCredential                PasswordCredential?
+  passwordRecoveries                PasswordRecoveryRequest[]
+  sessions                          UserSession[]
+  receivingEntryDocuments           ReceivingEntryDocument[]
+  receivingEntryItemRegularizations ReceivingEntryItemRegularization[]
 
   @@index([personId])
   @@map("user_account")
@@ -349,44 +350,46 @@ model Supplier {
 }
 
 model Contract {
-  id            String                @id @default(uuid()) @db.Uuid
-  code          String                @unique @db.VarChar(64)
-  supplierId    String                @map("supplier_id") @db.Uuid
-  object        String                @db.VarChar(500)
-  validityStart DateTime              @map("validity_start") @db.Date
-  validityEnd   DateTime              @map("validity_end") @db.Date
-  active        Boolean               @default(true)
-  version       Int                   @default(1)
-  createdAt     DateTime              @default(now()) @map("created_at")
-  updatedAt     DateTime              @updatedAt @map("updated_at")
-  supplier      Supplier              @relation(fields: [supplierId], references: [id], onDelete: Restrict)
-  items         ContractItem[]
-  designations  ContractDesignation[]
-  changes       ContractChange[]
-  supplyOrders  SupplyOrder[]
+  id                                String                             @id @default(uuid()) @db.Uuid
+  code                              String                             @unique @db.VarChar(64)
+  supplierId                        String                             @map("supplier_id") @db.Uuid
+  object                            String                             @db.VarChar(500)
+  validityStart                     DateTime                           @map("validity_start") @db.Date
+  validityEnd                       DateTime                           @map("validity_end") @db.Date
+  active                            Boolean                            @default(true)
+  version                           Int                                @default(1)
+  createdAt                         DateTime                           @default(now()) @map("created_at")
+  updatedAt                         DateTime                           @updatedAt @map("updated_at")
+  supplier                          Supplier                           @relation(fields: [supplierId], references: [id], onDelete: Restrict)
+  items                             ContractItem[]
+  designations                      ContractDesignation[]
+  changes                           ContractChange[]
+  supplyOrders                      SupplyOrder[]
+  receivingEntryItemRegularizations ReceivingEntryItemRegularization[]
 
   @@index([supplierId])
   @@map("contract")
 }
 
 model ContractItem {
-  id                      String                    @id @default(uuid()) @db.Uuid
-  code                    String                    @unique @db.VarChar(64)
-  contractId              String                    @map("contract_id") @db.Uuid
-  lineNumber              Int                       @map("line_number")
-  materialSingularId      String?                   @map("material_singular_id") @db.Uuid
-  materialConfigurationId String?                   @map("material_configuration_id") @db.Uuid
-  contractedQuantity      Int                       @map("contracted_quantity")
-  unitPrice               Decimal                   @map("unit_price") @db.Decimal(14, 2)
-  active                  Boolean                   @default(true)
-  createdAt               DateTime                  @default(now()) @map("created_at")
-  updatedAt               DateTime                  @updatedAt @map("updated_at")
-  contract                Contract                  @relation(fields: [contractId], references: [id], onDelete: Restrict)
-  materialSingular        MaterialSingular?         @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
-  materialConfiguration   MaterialConfiguration?    @relation(fields: [materialConfigurationId], references: [id], onDelete: Restrict)
-  balanceMovements        ContractBalanceMovement[]
-  balancePosition         ContractBalancePosition?
-  supplyOrderItems        SupplyOrderItem[]
+  id                                String                             @id @default(uuid()) @db.Uuid
+  code                              String                             @unique @db.VarChar(64)
+  contractId                        String                             @map("contract_id") @db.Uuid
+  lineNumber                        Int                                @map("line_number")
+  materialSingularId                String?                            @map("material_singular_id") @db.Uuid
+  materialConfigurationId           String?                            @map("material_configuration_id") @db.Uuid
+  contractedQuantity                Int                                @map("contracted_quantity")
+  unitPrice                         Decimal                            @map("unit_price") @db.Decimal(14, 2)
+  active                            Boolean                            @default(true)
+  createdAt                         DateTime                           @default(now()) @map("created_at")
+  updatedAt                         DateTime                           @updatedAt @map("updated_at")
+  contract                          Contract                           @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  materialSingular                  MaterialSingular?                  @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
+  materialConfiguration             MaterialConfiguration?             @relation(fields: [materialConfigurationId], references: [id], onDelete: Restrict)
+  balanceMovements                  ContractBalanceMovement[]
+  balancePosition                   ContractBalancePosition?
+  supplyOrderItems                  SupplyOrderItem[]
+  receivingEntryItemRegularizations ReceivingEntryItemRegularization[]
 
   @@unique([contractId, lineNumber], map: "contract_item_contract_line_number_key")
   @@unique([id, contractId], map: "contract_item_id_contract_id_key")
@@ -475,17 +478,18 @@ model ContractBalancePosition {
 }
 
 model SupplyOrder {
-  id           String                   @id @default(uuid()) @db.Uuid
-  code         String                   @unique @db.VarChar(64)
-  contractId   String                   @map("contract_id") @db.Uuid
-  status       SupplyOrderStatus        @default(EMITIDA)
-  issuedAt     DateTime                 @map("issued_at")
-  version      Int                      @default(1)
-  createdAt    DateTime                 @default(now()) @map("created_at")
-  updatedAt    DateTime                 @updatedAt @map("updated_at")
-  contract     Contract                 @relation(fields: [contractId], references: [id], onDelete: Restrict)
-  items        SupplyOrderItem[]
-  cancellation SupplyOrderCancellation?
+  id                                String                             @id @default(uuid()) @db.Uuid
+  code                              String                             @unique @db.VarChar(64)
+  contractId                        String                             @map("contract_id") @db.Uuid
+  status                            SupplyOrderStatus                  @default(EMITIDA)
+  issuedAt                          DateTime                           @map("issued_at")
+  version                           Int                                @default(1)
+  createdAt                         DateTime                           @default(now()) @map("created_at")
+  updatedAt                         DateTime                           @updatedAt @map("updated_at")
+  contract                          Contract                           @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  items                             SupplyOrderItem[]
+  cancellation                      SupplyOrderCancellation?
+  receivingEntryItemRegularizations ReceivingEntryItemRegularization[]
 
   @@unique([id, contractId], map: "supply_order_id_contract_id_key")
   @@index([contractId])
@@ -494,20 +498,22 @@ model SupplyOrder {
 }
 
 model SupplyOrderItem {
-  id             String       @id @default(uuid()) @db.Uuid
-  supplyOrderId  String       @map("supply_order_id") @db.Uuid
-  contractId     String       @map("contract_id") @db.Uuid
-  contractItemId String       @map("contract_item_id") @db.Uuid
-  lineNumber     Int          @map("line_number")
-  quantity       Int
-  unitPrice      Decimal      @map("unit_price") @db.Decimal(14, 2)
-  totalAmount    Decimal      @map("total_amount") @db.Decimal(14, 2)
-  createdAt      DateTime     @default(now()) @map("created_at")
-  updatedAt      DateTime     @updatedAt @map("updated_at")
-  supplyOrder    SupplyOrder  @relation(fields: [supplyOrderId], references: [id], onDelete: Restrict)
-  contractItem   ContractItem @relation(fields: [contractItemId], references: [id], onDelete: Restrict)
+  id                                String                             @id @default(uuid()) @db.Uuid
+  supplyOrderId                     String                             @map("supply_order_id") @db.Uuid
+  contractId                        String                             @map("contract_id") @db.Uuid
+  contractItemId                    String                             @map("contract_item_id") @db.Uuid
+  lineNumber                        Int                                @map("line_number")
+  quantity                          Int
+  unitPrice                         Decimal                            @map("unit_price") @db.Decimal(14, 2)
+  totalAmount                       Decimal                            @map("total_amount") @db.Decimal(14, 2)
+  createdAt                         DateTime                           @default(now()) @map("created_at")
+  updatedAt                         DateTime                           @updatedAt @map("updated_at")
+  supplyOrder                       SupplyOrder                        @relation(fields: [supplyOrderId], references: [id], onDelete: Restrict)
+  contractItem                      ContractItem                       @relation(fields: [contractItemId], references: [id], onDelete: Restrict)
+  receivingEntryItemRegularizations ReceivingEntryItemRegularization[]
 
   @@unique([supplyOrderId, lineNumber], map: "supply_order_item_order_line_key")
+  @@unique([id, supplyOrderId, contractId, contractItemId], map: "supply_order_item_identity_key")
   @@index([contractId])
   @@index([contractItemId])
   @@map("supply_order_item")
@@ -551,19 +557,20 @@ model ReceivingEntry {
 }
 
 model ReceivingEntryItem {
-  id                      String                       @id @default(uuid()) @db.Uuid
-  receivingEntryId        String                       @map("receiving_entry_id") @db.Uuid
-  lineNumber              Int                          @map("line_number")
-  materialSingularId      String?                      @map("material_singular_id") @db.Uuid
-  materialConfigurationId String?                      @map("material_configuration_id") @db.Uuid
-  originType              ReceivingEntryItemOriginType @default(PENDENTE) @map("origin_type")
+  id                      String                             @id @default(uuid()) @db.Uuid
+  receivingEntryId        String                             @map("receiving_entry_id") @db.Uuid
+  lineNumber              Int                                @map("line_number")
+  materialSingularId      String?                            @map("material_singular_id") @db.Uuid
+  materialConfigurationId String?                            @map("material_configuration_id") @db.Uuid
+  originType              ReceivingEntryItemOriginType       @default(PENDENTE) @map("origin_type")
   quantity                Int
-  notes                   String?                      @db.VarChar(500)
-  createdAt               DateTime                     @default(now()) @map("created_at")
-  updatedAt               DateTime                     @updatedAt @map("updated_at")
-  receivingEntry          ReceivingEntry               @relation(fields: [receivingEntryId], references: [id], onDelete: Restrict)
-  materialSingular        MaterialSingular?            @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
-  materialConfiguration   MaterialConfiguration?       @relation(fields: [materialConfigurationId], references: [id], onDelete: Restrict)
+  notes                   String?                            @db.VarChar(500)
+  createdAt               DateTime                           @default(now()) @map("created_at")
+  updatedAt               DateTime                           @updatedAt @map("updated_at")
+  receivingEntry          ReceivingEntry                     @relation(fields: [receivingEntryId], references: [id], onDelete: Restrict)
+  materialSingular        MaterialSingular?                  @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
+  materialConfiguration   MaterialConfiguration?             @relation(fields: [materialConfigurationId], references: [id], onDelete: Restrict)
+  regularizations         ReceivingEntryItemRegularization[]
 
   @@unique([receivingEntryId, lineNumber], map: "receiving_entry_item_entry_line_key")
   @@index([receivingEntryId])
@@ -571,6 +578,39 @@ model ReceivingEntryItem {
   @@index([materialConfigurationId])
   @@index([originType])
   @@map("receiving_entry_item")
+}
+
+model ReceivingEntryItemRegularization {
+  id                   String                       @id @default(uuid()) @db.Uuid
+  receivingEntryItemId String                       @map("receiving_entry_item_id") @db.Uuid
+  originType           ReceivingEntryItemOriginType @map("origin_type")
+  regularizedAt        DateTime                     @map("regularized_at")
+  contractId           String?                      @map("contract_id") @db.Uuid
+  contractItemId       String?                      @map("contract_item_id") @db.Uuid
+  supplyOrderId        String?                      @map("supply_order_id") @db.Uuid
+  supplyOrderItemId    String?                      @map("supply_order_item_id") @db.Uuid
+  regularizedByUserId  String?                      @map("regularized_by_user_id") @db.Uuid
+  notes                String?                      @db.VarChar(500)
+  version              Int                          @default(1)
+  createdAt            DateTime                     @default(now()) @map("created_at")
+  updatedAt            DateTime                     @updatedAt @map("updated_at")
+  receivingEntryItem   ReceivingEntryItem           @relation(fields: [receivingEntryItemId], references: [id], onDelete: Restrict)
+  contract             Contract?                    @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  contractItem         ContractItem?                @relation(fields: [contractItemId, contractId], references: [id, contractId], onDelete: Restrict)
+  supplyOrder          SupplyOrder?                 @relation(fields: [supplyOrderId, contractId], references: [id, contractId], onDelete: Restrict)
+  supplyOrderItem      SupplyOrderItem?             @relation(fields: [supplyOrderItemId, supplyOrderId, contractId, contractItemId], references: [id, supplyOrderId, contractId, contractItemId], onDelete: Restrict)
+  regularizedByUser    UserAccount?                 @relation(fields: [regularizedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([receivingEntryItemId], map: "receiving_entry_item_regularization_item_key")
+  @@index([receivingEntryItemId])
+  @@index([originType])
+  @@index([regularizedAt])
+  @@index([contractId])
+  @@index([contractItemId])
+  @@index([supplyOrderId])
+  @@index([supplyOrderItemId])
+  @@index([regularizedByUserId])
+  @@map("receiving_entry_item_regularization")
 }
 
 model ReceivingEntryDocument {
