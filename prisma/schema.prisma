@@ -97,6 +97,16 @@ enum ReceivingEntryItemOriginType {
   PENDENTE
 }
 
+enum ReceivingEntryDocumentType {
+  NOTA_FISCAL
+  DOCUMENTO_ENTREGA
+  OUTRO
+}
+
+enum ReceivingEntryDocumentOrigin {
+  EXTERNO
+}
+
 model Person {
   id          String        @id @default(uuid()) @db.Uuid
   displayName String        @map("display_name") @db.VarChar(160)
@@ -108,18 +118,19 @@ model Person {
 }
 
 model UserAccount {
-  id                   String                    @id @default(uuid()) @db.Uuid
-  personId             String                    @unique @map("person_id") @db.Uuid
-  loginIdentifier      String                    @unique @map("login_identifier") @db.VarChar(160)
-  status               UserStatus                @default(ACTIVE)
-  isTechnicalSuperuser Boolean                   @default(false) @map("is_technical_superuser")
-  createdAt            DateTime                  @default(now()) @map("created_at")
-  updatedAt            DateTime                  @updatedAt @map("updated_at")
-  person               Person                    @relation(fields: [personId], references: [id], onDelete: Restrict)
-  memberships          TeamMembership[]
-  passwordCredential   PasswordCredential?
-  passwordRecoveries   PasswordRecoveryRequest[]
-  sessions             UserSession[]
+  id                      String                    @id @default(uuid()) @db.Uuid
+  personId                String                    @unique @map("person_id") @db.Uuid
+  loginIdentifier         String                    @unique @map("login_identifier") @db.VarChar(160)
+  status                  UserStatus                @default(ACTIVE)
+  isTechnicalSuperuser    Boolean                   @default(false) @map("is_technical_superuser")
+  createdAt               DateTime                  @default(now()) @map("created_at")
+  updatedAt               DateTime                  @updatedAt @map("updated_at")
+  person                  Person                    @relation(fields: [personId], references: [id], onDelete: Restrict)
+  memberships             TeamMembership[]
+  passwordCredential      PasswordCredential?
+  passwordRecoveries      PasswordRecoveryRequest[]
+  sessions                UserSession[]
+  receivingEntryDocuments ReceivingEntryDocument[]
 
   @@index([personId])
   @@map("user_account")
@@ -520,17 +531,18 @@ model SupplyOrderCancellation {
 }
 
 model ReceivingEntry {
-  id                String               @id @default(uuid()) @db.Uuid
-  code              String               @unique @db.VarChar(64)
-  receivingEntityId String               @map("receiving_entity_id") @db.Uuid
-  receivedAt        DateTime             @map("received_at")
-  status            ReceivingEntryStatus @default(REGISTRADA)
-  notes             String?              @db.VarChar(500)
-  version           Int                  @default(1)
-  createdAt         DateTime             @default(now()) @map("created_at")
-  updatedAt         DateTime             @updatedAt @map("updated_at")
-  receivingEntity   Entity               @relation(fields: [receivingEntityId], references: [id], onDelete: Restrict)
+  id                String                   @id @default(uuid()) @db.Uuid
+  code              String                   @unique @db.VarChar(64)
+  receivingEntityId String                   @map("receiving_entity_id") @db.Uuid
+  receivedAt        DateTime                 @map("received_at")
+  status            ReceivingEntryStatus     @default(REGISTRADA)
+  notes             String?                  @db.VarChar(500)
+  version           Int                      @default(1)
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  updatedAt         DateTime                 @updatedAt @map("updated_at")
+  receivingEntity   Entity                   @relation(fields: [receivingEntityId], references: [id], onDelete: Restrict)
   items             ReceivingEntryItem[]
+  documents         ReceivingEntryDocument[]
 
   @@index([receivingEntityId])
   @@index([receivedAt])
@@ -559,6 +571,38 @@ model ReceivingEntryItem {
   @@index([materialConfigurationId])
   @@index([originType])
   @@map("receiving_entry_item")
+}
+
+model ReceivingEntryDocument {
+  id               String                       @id @default(uuid()) @db.Uuid
+  receivingEntryId String                       @map("receiving_entry_id") @db.Uuid
+  documentType     ReceivingEntryDocumentType   @map("document_type")
+  origin           ReceivingEntryDocumentOrigin @default(EXTERNO)
+  documentNumber   String?                      @map("document_number") @db.VarChar(80)
+  documentSeries   String?                      @map("document_series") @db.VarChar(20)
+  documentDate     DateTime?                    @map("document_date") @db.Date
+  issuerName       String?                      @map("issuer_name") @db.VarChar(180)
+  invoiceAccessKey String?                      @map("invoice_access_key") @db.Char(44)
+  fileName         String?                      @map("file_name") @db.VarChar(255)
+  contentType      String?                      @map("content_type") @db.VarChar(120)
+  sizeBytes        BigInt?                      @map("size_bytes")
+  storageKey       String?                      @unique @map("storage_key") @db.Text
+  sha256           String?                      @db.Char(64)
+  uploadedByUserId String?                      @map("uploaded_by_user_id") @db.Uuid
+  notes            String?                      @db.VarChar(500)
+  version          Int                          @default(1)
+  createdAt        DateTime                     @default(now()) @map("created_at")
+  updatedAt        DateTime                     @updatedAt @map("updated_at")
+  receivingEntry   ReceivingEntry               @relation(fields: [receivingEntryId], references: [id], onDelete: Restrict)
+  uploadedByUser   UserAccount?                 @relation(fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([receivingEntryId])
+  @@index([documentType])
+  @@index([documentDate])
+  @@index([invoiceAccessKey])
+  @@index([uploadedByUserId])
+  @@index([sha256])
+  @@map("receiving_entry_document")
 }
 
 model CommandIdempotency {
