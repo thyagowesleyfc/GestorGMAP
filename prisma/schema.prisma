@@ -107,6 +107,10 @@ enum ReceivingEntryDocumentOrigin {
   EXTERNO
 }
 
+enum StockMovementType {
+  ENTRADA_RECEBIMENTO
+}
+
 model Person {
   id          String        @id @default(uuid()) @db.Uuid
   displayName String        @map("display_name") @db.VarChar(160)
@@ -571,6 +575,7 @@ model ReceivingEntryItem {
   materialSingular        MaterialSingular?                  @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
   materialConfiguration   MaterialConfiguration?             @relation(fields: [materialConfigurationId], references: [id], onDelete: Restrict)
   regularizations         ReceivingEntryItemRegularization[]
+  stockMovements          StockMovement[]
 
   @@unique([receivingEntryId, lineNumber], map: "receiving_entry_item_entry_line_key")
   @@index([receivingEntryId])
@@ -600,8 +605,10 @@ model ReceivingEntryItemRegularization {
   supplyOrder          SupplyOrder?                 @relation(fields: [supplyOrderId, contractId], references: [id, contractId], onDelete: Restrict)
   supplyOrderItem      SupplyOrderItem?             @relation(fields: [supplyOrderItemId, supplyOrderId, contractId, contractItemId], references: [id, supplyOrderId, contractId, contractItemId], onDelete: Restrict)
   regularizedByUser    UserAccount?                 @relation(fields: [regularizedByUserId], references: [id], onDelete: Restrict)
+  stockMovements       StockMovement[]
 
   @@unique([receivingEntryItemId], map: "receiving_entry_item_regularization_item_key")
+  @@unique([id, receivingEntryItemId, originType], map: "receiving_entry_item_regularization_identity_key")
   @@index([receivingEntryItemId])
   @@index([originType])
   @@index([regularizedAt])
@@ -643,6 +650,29 @@ model ReceivingEntryDocument {
   @@index([uploadedByUserId])
   @@index([sha256])
   @@map("receiving_entry_document")
+}
+
+model StockMovement {
+  id                                 String                           @id @default(uuid()) @db.Uuid
+  code                               String                           @unique @db.VarChar(80)
+  movementType                       StockMovementType                @map("movement_type")
+  receivingEntryItemRegularizationId String                           @map("receiving_entry_item_regularization_id") @db.Uuid
+  receivingEntryItemId               String                           @map("receiving_entry_item_id") @db.Uuid
+  originType                         ReceivingEntryItemOriginType     @map("origin_type")
+  quantityDelta                      Int                              @map("quantity_delta")
+  occurredAt                         DateTime                         @map("occurred_at")
+  summary                            String                           @db.VarChar(500)
+  createdAt                          DateTime                         @default(now()) @map("created_at")
+  receivingEntryItem                 ReceivingEntryItem               @relation(fields: [receivingEntryItemId], references: [id], onDelete: Restrict)
+  receivingEntryItemRegularization   ReceivingEntryItemRegularization @relation(fields: [receivingEntryItemRegularizationId, receivingEntryItemId, originType], references: [id, receivingEntryItemId, originType], onDelete: Restrict)
+
+  @@unique([receivingEntryItemRegularizationId, movementType], map: "stock_movement_receiving_regularization_type_key")
+  @@index([movementType])
+  @@index([receivingEntryItemRegularizationId])
+  @@index([receivingEntryItemId])
+  @@index([originType])
+  @@index([occurredAt])
+  @@map("stock_movement")
 }
 
 model CommandIdempotency {
