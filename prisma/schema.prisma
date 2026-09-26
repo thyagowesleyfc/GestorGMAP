@@ -264,6 +264,7 @@ model Entity {
   parentEntity     Entity?          @relation("EntityHierarchy", fields: [parentEntityId], references: [id], onDelete: Restrict)
   childEntities    Entity[]         @relation("EntityHierarchy")
   receivingEntries ReceivingEntry[]
+  stockPositions   StockPosition[]
 
   @@index([entityType])
   @@index([greId])
@@ -303,6 +304,7 @@ model MaterialSingular {
   configurationComponents     MaterialConfigurationComponent[]
   contractItems               ContractItem[]
   receivingEntryItems         ReceivingEntryItem[]
+  stockPositions              StockPosition[]
 
   @@index([classId])
   @@index([controlType])
@@ -320,6 +322,7 @@ model MaterialConfiguration {
   components          MaterialConfigurationComponent[]
   contractItems       ContractItem[]
   receivingEntryItems ReceivingEntryItem[]
+  stockPositions      StockPosition[]
 
   @@index([configurationType])
   @@map("material_configuration")
@@ -673,6 +676,30 @@ model StockMovement {
   @@index([originType])
   @@index([occurredAt])
   @@map("stock_movement")
+}
+
+model StockPosition {
+  id                      String                       @id @default(uuid()) @db.Uuid
+  stockEntityId           String                       @map("stock_entity_id") @db.Uuid
+  materialSingularId      String?                      @map("material_singular_id") @db.Uuid
+  materialConfigurationId String?                      @map("material_configuration_id") @db.Uuid
+  originType              ReceivingEntryItemOriginType @map("origin_type")
+  physicalQuantity        Int                          @default(0) @map("physical_quantity")
+  reservedQuantity        Int                          @default(0) @map("reserved_quantity")
+  separatingQuantity      Int                          @default(0) @map("separating_quantity")
+  availableQuantity       Int                          @default(0) @map("available_quantity")
+  version                 Int                          @default(1)
+  createdAt               DateTime                     @default(now()) @map("created_at")
+  updatedAt               DateTime                     @updatedAt @map("updated_at")
+  stockEntity             Entity                       @relation(fields: [stockEntityId], references: [id], onDelete: Restrict)
+  materialSingular        MaterialSingular?            @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
+  materialConfiguration   MaterialConfiguration?       @relation(fields: [materialConfigurationId], references: [id], onDelete: Restrict)
+
+  @@index([stockEntityId])
+  @@index([materialSingularId])
+  @@index([materialConfigurationId])
+  @@index([originType])
+  @@map("stock_position")
 }
 
 model CommandIdempotency {

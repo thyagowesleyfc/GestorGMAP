@@ -23,7 +23,7 @@ async function runPrismaMigrateDeploy(databaseUrl: string): Promise<void> {
 }
 
 describe("receiving entry migration", () => {
-  it("creates receiving entries and items without stock position side effects", async () => {
+  it("creates receiving entries and items without stock ledger side effects", async () => {
     const postgres = await new PostgreSqlContainer("postgres:17-alpine").start();
     const client = new Client({ connectionString: postgres.getConnectionUri() });
 
@@ -35,7 +35,7 @@ describe("receiving entry migration", () => {
         `select table_name
            from information_schema.tables
           where table_schema = 'public'
-            and table_name in ('receiving_entry', 'receiving_entry_item', 'stock_position')
+            and table_name in ('receiving_entry', 'receiving_entry_item')
           order by table_name`
       );
 

@@ -23,7 +23,7 @@ async function runPrismaMigrateDeploy(databaseUrl: string): Promise<void> {
 }
 
 describe("receiving entry item regularization migration", () => {
-  it("creates per-item regularizations without stock position side effects", async () => {
+  it("creates per-item regularizations without stock position mutation side effects", async () => {
     const postgres = await new PostgreSqlContainer("postgres:17-alpine").start();
     const client = new Client({ connectionString: postgres.getConnectionUri() });
 
@@ -36,8 +36,7 @@ describe("receiving entry item regularization migration", () => {
            from information_schema.tables
           where table_schema = 'public'
             and table_name in (
-              'receiving_entry_item_regularization',
-              'stock_position'
+              'receiving_entry_item_regularization'
             )
           order by table_name`
       );
