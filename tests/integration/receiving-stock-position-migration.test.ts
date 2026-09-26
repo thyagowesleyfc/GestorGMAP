@@ -23,7 +23,7 @@ async function runPrismaMigrateDeploy(databaseUrl: string): Promise<void> {
 }
 
 describe("receiving stock position migration", () => {
-  it("creates stock positions without reservation or separation tables", async () => {
+  it("creates stock positions before separation tables", async () => {
     const postgres = await new PostgreSqlContainer("postgres:17-alpine").start();
     const client = new Client({ connectionString: postgres.getConnectionUri() });
 
@@ -35,7 +35,7 @@ describe("receiving stock position migration", () => {
         `select table_name
            from information_schema.tables
           where table_schema = 'public'
-            and table_name in ('stock_position', 'stock_reservation', 'stock_separation')
+            and table_name in ('stock_position', 'stock_separation')
           order by table_name`
       );
 

@@ -111,6 +111,10 @@ enum StockMovementType {
   ENTRADA_RECEBIMENTO
 }
 
+enum StockReservationStatus {
+  ATIVA
+}
+
 model Person {
   id          String        @id @default(uuid()) @db.Uuid
   displayName String        @map("display_name") @db.VarChar(160)
@@ -691,6 +695,7 @@ model StockPosition {
   version                 Int                          @default(1)
   createdAt               DateTime                     @default(now()) @map("created_at")
   updatedAt               DateTime                     @updatedAt @map("updated_at")
+  reservations            StockReservation[]
   stockEntity             Entity                       @relation(fields: [stockEntityId], references: [id], onDelete: Restrict)
   materialSingular        MaterialSingular?            @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
   materialConfiguration   MaterialConfiguration?       @relation(fields: [materialConfigurationId], references: [id], onDelete: Restrict)
@@ -700,6 +705,26 @@ model StockPosition {
   @@index([materialConfigurationId])
   @@index([originType])
   @@map("stock_position")
+}
+
+model StockReservation {
+  id              String                 @id @default(uuid()) @db.Uuid
+  code            String                 @unique @db.VarChar(80)
+  stockPositionId String                 @map("stock_position_id") @db.Uuid
+  status          StockReservationStatus @default(ATIVA)
+  quantity        Int
+  reservedAt      DateTime               @map("reserved_at")
+  summary         String                 @db.VarChar(500)
+  version         Int                    @default(1)
+  createdAt       DateTime               @default(now()) @map("created_at")
+  updatedAt       DateTime               @updatedAt @map("updated_at")
+  stockPosition   StockPosition          @relation(fields: [stockPositionId], references: [id], onDelete: Restrict)
+
+  @@index([stockPositionId])
+  @@index([stockPositionId, status], map: "stock_reservation_position_status_idx")
+  @@index([status])
+  @@index([reservedAt])
+  @@map("stock_reservation")
 }
 
 model CommandIdempotency {
