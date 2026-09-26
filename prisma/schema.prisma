@@ -115,6 +115,10 @@ enum StockReservationStatus {
   ATIVA
 }
 
+enum StockSeparationStatus {
+  EM_SEPARACAO
+}
+
 model Person {
   id          String        @id @default(uuid()) @db.Uuid
   displayName String        @map("display_name") @db.VarChar(160)
@@ -696,6 +700,7 @@ model StockPosition {
   createdAt               DateTime                     @default(now()) @map("created_at")
   updatedAt               DateTime                     @updatedAt @map("updated_at")
   reservations            StockReservation[]
+  separations             StockSeparation[]
   stockEntity             Entity                       @relation(fields: [stockEntityId], references: [id], onDelete: Restrict)
   materialSingular        MaterialSingular?            @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
   materialConfiguration   MaterialConfiguration?       @relation(fields: [materialConfigurationId], references: [id], onDelete: Restrict)
@@ -719,12 +724,38 @@ model StockReservation {
   createdAt       DateTime               @default(now()) @map("created_at")
   updatedAt       DateTime               @updatedAt @map("updated_at")
   stockPosition   StockPosition          @relation(fields: [stockPositionId], references: [id], onDelete: Restrict)
+  separations     StockSeparation[]
 
+  @@unique([id, stockPositionId], map: "stock_reservation_id_position_id_key")
   @@index([stockPositionId])
   @@index([stockPositionId, status], map: "stock_reservation_position_status_idx")
   @@index([status])
   @@index([reservedAt])
   @@map("stock_reservation")
+}
+
+model StockSeparation {
+  id                 String                @id @default(uuid()) @db.Uuid
+  code               String                @unique @db.VarChar(80)
+  stockPositionId    String                @map("stock_position_id") @db.Uuid
+  stockReservationId String                @map("stock_reservation_id") @db.Uuid
+  status             StockSeparationStatus @default(EM_SEPARACAO)
+  quantity           Int
+  separatedAt        DateTime              @map("separated_at")
+  summary            String                @db.VarChar(500)
+  version            Int                   @default(1)
+  createdAt          DateTime              @default(now()) @map("created_at")
+  updatedAt          DateTime              @updatedAt @map("updated_at")
+  stockPosition      StockPosition         @relation(fields: [stockPositionId], references: [id], onDelete: Restrict)
+  stockReservation   StockReservation      @relation(fields: [stockReservationId], references: [id], onDelete: Restrict)
+
+  @@index([stockPositionId])
+  @@index([stockPositionId, status], map: "stock_separation_position_status_idx")
+  @@index([stockReservationId])
+  @@index([stockReservationId, status], map: "stock_separation_reservation_status_idx")
+  @@index([status])
+  @@index([separatedAt])
+  @@map("stock_separation")
 }
 
 model CommandIdempotency {

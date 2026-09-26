@@ -23,7 +23,7 @@ async function runPrismaMigrateDeploy(databaseUrl: string): Promise<void> {
 }
 
 describe("receiving stock movement migration", () => {
-  it("creates append-only stock movements before separation", async () => {
+  it("creates append-only stock movements", async () => {
     const postgres = await new PostgreSqlContainer("postgres:17-alpine").start();
     const client = new Client({ connectionString: postgres.getConnectionUri() });
 
@@ -35,7 +35,7 @@ describe("receiving stock movement migration", () => {
         `select table_name
            from information_schema.tables
           where table_schema = 'public'
-            and table_name in ('stock_movement', 'stock_separation')
+            and table_name in ('stock_movement')
           order by table_name`
       );
 
