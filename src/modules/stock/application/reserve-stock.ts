@@ -5,6 +5,9 @@ export type ReserveStockInput = {
   quantity: number;
   reservedAt?: Date;
   summary: string;
+  actorUserId?: string;
+  teamContext?: string;
+  correlationId?: string;
 };
 
 export type ReserveStockCommand = {
@@ -14,6 +17,9 @@ export type ReserveStockCommand = {
   quantity: number;
   reservedAt: Date;
   summary: string;
+  actorUserId?: string;
+  teamContext?: string;
+  correlationId: string;
 };
 
 export type ReserveStockFailureReason =
@@ -71,7 +77,10 @@ export class ReserveStock {
       stockPositionId: input.stockPositionId,
       quantity: input.quantity,
       reservedAt: input.reservedAt ?? new Date(),
-      summary
+      summary,
+      actorUserId: input.actorUserId,
+      teamContext: input.teamContext,
+      correlationId: input.correlationId?.trim() || commandId
     });
   }
 }

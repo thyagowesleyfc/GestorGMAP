@@ -68,6 +68,7 @@ describe("reserve stock", () => {
       ]);
 
       await expectStockReservedOnce(client, stockPositionId);
+      await expectAuditEntries(client, 1);
     } finally {
       await pool.end().catch(() => undefined);
       await client.end().catch(() => undefined);
@@ -101,6 +102,7 @@ describe("reserve stock", () => {
       expect(first.ok).toBe(true);
       expect(retry).toEqual(first);
       await expectStockReservedOnce(client, stockPositionId);
+      await expectAuditEntries(client, 1);
       await expectIdempotencyRows(client, 1);
     } finally {
       await pool.end().catch(() => undefined);
@@ -146,6 +148,7 @@ describe("reserve stock", () => {
         availableQuantity: 5,
         version: 2
       });
+      await expectAuditEntries(client, 1);
       await expectIdempotencyRows(client, 1);
     } finally {
       await pool.end().catch(() => undefined);
@@ -200,6 +203,7 @@ describe("reserve stock", () => {
         availableQuantity: 10,
         version: 1
       });
+      await expectAuditEntries(client, 0);
     } finally {
       await pool.end().catch(() => undefined);
       await client.end().catch(() => undefined);
@@ -250,6 +254,31 @@ async function expectStockPosition(
   ]);
 }
 
+async function expectAuditEntries(client: Client, expectedCount: number): Promise<void> {
+  const auditEntries = await client.query<{
+    count: number;
+    action: string | null;
+    object_type: string | null;
+  }>(
+    `select count(*)::int as count,
+            min("action") as action,
+            min("object_type") as object_type
+       from "audit_entry"`
+  );
+
+  if (expectedCount === 0) {
+    expect(auditEntries.rows).toEqual([{ count: 0, action: null, object_type: null }]);
+    return;
+  }
+
+  expect(auditEntries.rows).toEqual([
+    {
+      count: expectedCount,
+      action: "stock.reserve_stock",
+      object_type: "stock_reservation"
+    }
+  ]);
+}
 async function expectIdempotencyRows(client: Client, expectedCount: number): Promise<void> {
   const idempotencyRows = await client.query<{ count: number }>(
     `select count(*)::int as count

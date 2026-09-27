@@ -22,7 +22,9 @@ type IdempotencyReservation =
 
 type LockedStockPosition = {
   id: string;
+  reserved_quantity: number;
   available_quantity: number;
+  version: number;
 };
 
 const UNIQUE_VIOLATION = "23505";
@@ -128,7 +130,7 @@ export class PostgresStockReserver implements StockReserver {
     input: ReserveStockCommand
   ): Promise<ReserveStockResult> {
     const stockPosition = await client.query<LockedStockPosition>(
-      `select "id", "available_quantity"
+      `select "id", "reserved_quantity", "available_quantity", "version"
          from "stock_position"
         where "id" = $1
         for update`,
@@ -176,6 +178,36 @@ export class PostgresStockReserver implements StockReserver {
               "updated_at" = current_timestamp
         where "id" = $1`,
       [input.stockPositionId, input.quantity]
+    );
+
+    await client.query(
+      `insert into "audit_entry" (
+        "id", "occurred_at", "actor_user_id", "team_context", "action", "object_type", "object_id",
+        "previous_value", "next_value", "reason", "correlation_id"
+      ) values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9::jsonb, $10, $11)`,
+      [
+        randomUUID(),
+        input.reservedAt,
+        input.actorUserId ?? null,
+        input.teamContext ?? null,
+        "stock.reserve_stock",
+        "stock_reservation",
+        reservationId,
+        JSON.stringify({
+          stockPositionId: input.stockPositionId,
+          reservedQuantity: row.reserved_quantity,
+          availableQuantity: row.available_quantity,
+          version: row.version
+        }),
+        JSON.stringify({
+          stockPositionId: input.stockPositionId,
+          reservedQuantity: row.reserved_quantity + input.quantity,
+          availableQuantity: row.available_quantity - input.quantity,
+          version: row.version + 1
+        }),
+        input.summary,
+        input.correlationId
+      ]
     );
 
     return { ok: true, reservationId };

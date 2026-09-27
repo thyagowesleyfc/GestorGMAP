@@ -148,6 +148,7 @@ model UserAccount {
   sessions                          UserSession[]
   receivingEntryDocuments           ReceivingEntryDocument[]
   receivingEntryItemRegularizations ReceivingEntryItemRegularization[]
+  auditEntries                      AuditEntry[]
 
   @@index([personId])
   @@map("user_account")
@@ -787,6 +788,29 @@ model StockReturn {
   @@index([status])
   @@index([returnedAt])
   @@map("stock_return")
+}
+
+model AuditEntry {
+  id            String       @id @default(uuid()) @db.Uuid
+  occurredAt    DateTime     @default(now()) @map("occurred_at")
+  actorUserId   String?      @map("actor_user_id") @db.Uuid
+  teamContext   String?      @map("team_context") @db.VarChar(120)
+  action        String       @db.VarChar(120)
+  objectType    String       @map("object_type") @db.VarChar(120)
+  objectId      String       @map("object_id") @db.VarChar(120)
+  previousValue Json?        @map("previous_value")
+  nextValue     Json?        @map("next_value")
+  reason        String?      @db.VarChar(500)
+  correlationId String       @map("correlation_id") @db.VarChar(160)
+  createdAt     DateTime     @default(now()) @map("created_at")
+  actorUser     UserAccount? @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([actorUserId])
+  @@index([action])
+  @@index([objectType, objectId], map: "audit_entry_object_lookup_idx")
+  @@index([correlationId])
+  @@index([occurredAt])
+  @@map("audit_entry")
 }
 
 model CommandIdempotency {
