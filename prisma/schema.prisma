@@ -123,6 +123,14 @@ enum StockReturnStatus {
   REGISTRADA
 }
 
+enum MaterialRequestStatus {
+  TRIAGEM
+  NOVA
+  ANALISADA
+  DESPACHADA
+  FINALIZADA
+}
+
 model Person {
   id          String        @id @default(uuid()) @db.Uuid
   displayName String        @map("display_name") @db.VarChar(160)
@@ -149,6 +157,7 @@ model UserAccount {
   receivingEntryDocuments           ReceivingEntryDocument[]
   receivingEntryItemRegularizations ReceivingEntryItemRegularization[]
   auditEntries                      AuditEntry[]
+  MaterialRequest                   MaterialRequest[]
 
   @@index([personId])
   @@map("user_account")
@@ -262,22 +271,23 @@ model Municipality {
 }
 
 model Entity {
-  id               String           @id @default(uuid()) @db.Uuid
-  code             String           @unique @db.VarChar(64)
-  name             String           @db.VarChar(180)
-  entityType       EntityType       @map("entity_type")
-  greId            String           @map("gre_id") @db.Uuid
-  municipalityId   String?          @map("municipality_id") @db.Uuid
-  parentEntityId   String?          @map("parent_entity_id") @db.Uuid
-  active           Boolean          @default(true)
-  createdAt        DateTime         @default(now()) @map("created_at")
-  updatedAt        DateTime         @updatedAt @map("updated_at")
-  gre              Gre              @relation(fields: [greId], references: [id], onDelete: Restrict)
-  municipality     Municipality?    @relation(fields: [municipalityId], references: [id], onDelete: Restrict)
-  parentEntity     Entity?          @relation("EntityHierarchy", fields: [parentEntityId], references: [id], onDelete: Restrict)
-  childEntities    Entity[]         @relation("EntityHierarchy")
+  id               String            @id @default(uuid()) @db.Uuid
+  code             String            @unique @db.VarChar(64)
+  name             String            @db.VarChar(180)
+  entityType       EntityType        @map("entity_type")
+  greId            String            @map("gre_id") @db.Uuid
+  municipalityId   String?           @map("municipality_id") @db.Uuid
+  parentEntityId   String?           @map("parent_entity_id") @db.Uuid
+  active           Boolean           @default(true)
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt @map("updated_at")
+  gre              Gre               @relation(fields: [greId], references: [id], onDelete: Restrict)
+  municipality     Municipality?     @relation(fields: [municipalityId], references: [id], onDelete: Restrict)
+  parentEntity     Entity?           @relation("EntityHierarchy", fields: [parentEntityId], references: [id], onDelete: Restrict)
+  childEntities    Entity[]          @relation("EntityHierarchy")
   receivingEntries ReceivingEntry[]
   stockPositions   StockPosition[]
+  MaterialRequest  MaterialRequest[]
 
   @@index([entityType])
   @@index([greId])
@@ -554,6 +564,27 @@ model SupplyOrderCancellation {
 
   @@index([status])
   @@map("supply_order_cancellation")
+}
+
+model MaterialRequest {
+  id                 String                @id @default(uuid()) @db.Uuid
+  code               String                @unique @db.VarChar(80)
+  requestingEntityId String                @map("requesting_entity_id") @db.Uuid
+  status             MaterialRequestStatus @default(TRIAGEM)
+  requestedAt        DateTime              @map("requested_at")
+  summary            String                @db.VarChar(500)
+  registeredByUserId String?               @map("registered_by_user_id") @db.Uuid
+  version            Int                   @default(1)
+  createdAt          DateTime              @default(now()) @map("created_at")
+  updatedAt          DateTime              @updatedAt @map("updated_at")
+  requestingEntity   Entity                @relation(fields: [requestingEntityId], references: [id], onDelete: Restrict)
+  registeredByUser   UserAccount?          @relation(fields: [registeredByUserId], references: [id], onDelete: Restrict)
+
+  @@index([requestingEntityId])
+  @@index([status])
+  @@index([requestedAt])
+  @@index([registeredByUserId])
+  @@map("material_request")
 }
 
 model ReceivingEntry {
