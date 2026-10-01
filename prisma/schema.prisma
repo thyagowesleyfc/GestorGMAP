@@ -332,6 +332,7 @@ model MaterialSingular {
   configurationComponents     MaterialConfigurationComponent[]
   contractItems               ContractItem[]
   receivingEntryItems         ReceivingEntryItem[]
+  materialRequestItems        MaterialRequestItem[]
   stockPositions              StockPosition[]
 
   @@index([classId])
@@ -340,17 +341,18 @@ model MaterialSingular {
 }
 
 model MaterialConfiguration {
-  id                  String                           @id @default(uuid()) @db.Uuid
-  code                String                           @unique @db.VarChar(64)
-  name                String                           @db.VarChar(180)
-  configurationType   MaterialConfigurationType        @map("configuration_type")
-  active              Boolean                          @default(true)
-  createdAt           DateTime                         @default(now()) @map("created_at")
-  updatedAt           DateTime                         @updatedAt @map("updated_at")
-  components          MaterialConfigurationComponent[]
-  contractItems       ContractItem[]
-  receivingEntryItems ReceivingEntryItem[]
-  stockPositions      StockPosition[]
+  id                   String                           @id @default(uuid()) @db.Uuid
+  code                 String                           @unique @db.VarChar(64)
+  name                 String                           @db.VarChar(180)
+  configurationType    MaterialConfigurationType        @map("configuration_type")
+  active               Boolean                          @default(true)
+  createdAt            DateTime                         @default(now()) @map("created_at")
+  updatedAt            DateTime                         @updatedAt @map("updated_at")
+  components           MaterialConfigurationComponent[]
+  contractItems        ContractItem[]
+  receivingEntryItems  ReceivingEntryItem[]
+  materialRequestItems MaterialRequestItem[]
+  stockPositions       StockPosition[]
 
   @@index([configurationType])
   @@map("material_configuration")
@@ -585,6 +587,7 @@ model MaterialRequest {
   requestingEntity   Entity                     @relation(fields: [requestingEntityId], references: [id], onDelete: Restrict)
   registeredByUser   UserAccount?               @relation(fields: [registeredByUserId], references: [id], onDelete: Restrict)
   references         MaterialRequestReference[]
+  items              MaterialRequestItem[]
 
   @@index([requestingEntityId])
   @@index([status])
@@ -610,6 +613,26 @@ model MaterialRequestReference {
   @@index([system])
   @@index([referenceType])
   @@map("material_request_reference")
+}
+
+model MaterialRequestItem {
+  id                      String                 @id @default(uuid()) @db.Uuid
+  materialRequestId       String                 @map("material_request_id") @db.Uuid
+  lineNumber              Int                    @map("line_number")
+  materialSingularId      String?                @map("material_singular_id") @db.Uuid
+  materialConfigurationId String?                @map("material_configuration_id") @db.Uuid
+  requestedQuantity       Int                    @map("requested_quantity")
+  createdAt               DateTime               @default(now()) @map("created_at")
+  updatedAt               DateTime               @updatedAt @map("updated_at")
+  materialRequest         MaterialRequest        @relation(fields: [materialRequestId], references: [id], onDelete: Restrict)
+  materialSingular        MaterialSingular?      @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
+  materialConfiguration   MaterialConfiguration? @relation(fields: [materialConfigurationId], references: [id], onDelete: Restrict)
+
+  @@unique([materialRequestId, lineNumber], map: "material_request_item_request_line_key")
+  @@index([materialRequestId])
+  @@index([materialSingularId])
+  @@index([materialConfigurationId])
+  @@map("material_request_item")
 }
 
 model ReceivingEntry {
