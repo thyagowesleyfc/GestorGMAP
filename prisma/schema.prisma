@@ -131,6 +131,11 @@ enum MaterialRequestStatus {
   FINALIZADA
 }
 
+enum MaterialRequestReferenceSystem {
+  SEI
+  REDMINE
+}
+
 model Person {
   id          String        @id @default(uuid()) @db.Uuid
   displayName String        @map("display_name") @db.VarChar(160)
@@ -567,24 +572,44 @@ model SupplyOrderCancellation {
 }
 
 model MaterialRequest {
-  id                 String                @id @default(uuid()) @db.Uuid
-  code               String                @unique @db.VarChar(80)
-  requestingEntityId String                @map("requesting_entity_id") @db.Uuid
-  status             MaterialRequestStatus @default(TRIAGEM)
-  requestedAt        DateTime              @map("requested_at")
-  summary            String                @db.VarChar(500)
-  registeredByUserId String?               @map("registered_by_user_id") @db.Uuid
-  version            Int                   @default(1)
-  createdAt          DateTime              @default(now()) @map("created_at")
-  updatedAt          DateTime              @updatedAt @map("updated_at")
-  requestingEntity   Entity                @relation(fields: [requestingEntityId], references: [id], onDelete: Restrict)
-  registeredByUser   UserAccount?          @relation(fields: [registeredByUserId], references: [id], onDelete: Restrict)
+  id                 String                     @id @default(uuid()) @db.Uuid
+  code               String                     @unique @db.VarChar(80)
+  requestingEntityId String                     @map("requesting_entity_id") @db.Uuid
+  status             MaterialRequestStatus      @default(TRIAGEM)
+  requestedAt        DateTime                   @map("requested_at")
+  summary            String                     @db.VarChar(500)
+  registeredByUserId String?                    @map("registered_by_user_id") @db.Uuid
+  version            Int                        @default(1)
+  createdAt          DateTime                   @default(now()) @map("created_at")
+  updatedAt          DateTime                   @updatedAt @map("updated_at")
+  requestingEntity   Entity                     @relation(fields: [requestingEntityId], references: [id], onDelete: Restrict)
+  registeredByUser   UserAccount?               @relation(fields: [registeredByUserId], references: [id], onDelete: Restrict)
+  references         MaterialRequestReference[]
 
   @@index([requestingEntityId])
   @@index([status])
   @@index([requestedAt])
   @@index([registeredByUserId])
   @@map("material_request")
+}
+
+model MaterialRequestReference {
+  id                String                         @id @default(uuid()) @db.Uuid
+  materialRequestId String                         @map("material_request_id") @db.Uuid
+  system            MaterialRequestReferenceSystem
+  referenceType     String                         @map("reference_type") @db.VarChar(80)
+  identifier        String                         @db.VarChar(160)
+  url               String?                        @db.Text
+  createdAt         DateTime                       @default(now()) @map("created_at")
+  updatedAt         DateTime                       @updatedAt @map("updated_at")
+  materialRequest   MaterialRequest                @relation(fields: [materialRequestId], references: [id], onDelete: Restrict)
+
+  @@unique([system, identifier], map: "material_request_reference_system_identifier_key")
+  @@unique([materialRequestId, system, identifier], map: "material_request_reference_request_system_identifier_key")
+  @@index([materialRequestId])
+  @@index([system])
+  @@index([referenceType])
+  @@map("material_request_reference")
 }
 
 model ReceivingEntry {

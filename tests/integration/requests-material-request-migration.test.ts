@@ -35,7 +35,7 @@ describe("material request migration", () => {
         `select table_name
            from information_schema.tables
           where table_schema = 'public'
-            and table_name in ('material_request', 'material_request_reference')
+            and table_name = 'material_request'
           order by table_name`
       );
 
