@@ -622,6 +622,7 @@ model MaterialRequestItem {
   materialSingularId      String?                @map("material_singular_id") @db.Uuid
   materialConfigurationId String?                @map("material_configuration_id") @db.Uuid
   requestedQuantity       Int                    @map("requested_quantity")
+  authorizedQuantity      Int?                   @map("authorized_quantity")
   createdAt               DateTime               @default(now()) @map("created_at")
   updatedAt               DateTime               @updatedAt @map("updated_at")
   materialRequest         MaterialRequest        @relation(fields: [materialRequestId], references: [id], onDelete: Restrict)
