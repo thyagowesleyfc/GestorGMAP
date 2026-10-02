@@ -793,6 +793,7 @@ model StockPosition {
   reservations            StockReservation[]
   separations             StockSeparation[]
   returns                 StockReturn[]
+  shipmentItems           LogisticsShipmentItem[]
   stockEntity             Entity                       @relation(fields: [stockEntityId], references: [id], onDelete: Restrict)
   materialSingular        MaterialSingular?            @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
   materialConfiguration   MaterialConfiguration?       @relation(fields: [materialConfigurationId], references: [id], onDelete: Restrict)
@@ -827,20 +828,21 @@ model StockReservation {
 }
 
 model StockSeparation {
-  id                 String                @id @default(uuid()) @db.Uuid
-  code               String                @unique @db.VarChar(80)
-  stockPositionId    String                @map("stock_position_id") @db.Uuid
-  stockReservationId String                @map("stock_reservation_id") @db.Uuid
-  status             StockSeparationStatus @default(EM_SEPARACAO)
+  id                 String                  @id @default(uuid()) @db.Uuid
+  code               String                  @unique @db.VarChar(80)
+  stockPositionId    String                  @map("stock_position_id") @db.Uuid
+  stockReservationId String                  @map("stock_reservation_id") @db.Uuid
+  status             StockSeparationStatus   @default(EM_SEPARACAO)
   quantity           Int
-  separatedAt        DateTime              @map("separated_at")
-  summary            String                @db.VarChar(500)
-  version            Int                   @default(1)
-  createdAt          DateTime              @default(now()) @map("created_at")
-  updatedAt          DateTime              @updatedAt @map("updated_at")
-  stockPosition      StockPosition         @relation(fields: [stockPositionId], references: [id], onDelete: Restrict)
-  stockReservation   StockReservation      @relation(fields: [stockReservationId], references: [id], onDelete: Restrict)
+  separatedAt        DateTime                @map("separated_at")
+  summary            String                  @db.VarChar(500)
+  version            Int                     @default(1)
+  createdAt          DateTime                @default(now()) @map("created_at")
+  updatedAt          DateTime                @updatedAt @map("updated_at")
+  stockPosition      StockPosition           @relation(fields: [stockPositionId], references: [id], onDelete: Restrict)
+  stockReservation   StockReservation        @relation(fields: [stockReservationId], references: [id], onDelete: Restrict)
   returns            StockReturn[]
+  shipmentItems      LogisticsShipmentItem[]
 
   @@unique([id, stockPositionId], map: "stock_separation_id_position_id_key")
   @@index([stockPositionId])
@@ -889,12 +891,34 @@ model LogisticsShipment {
   updatedAt         DateTime                @updatedAt @map("updated_at")
   materialRequest   MaterialRequest         @relation(fields: [materialRequestId], references: [id], onDelete: Restrict)
   receivingEntity   Entity                  @relation(fields: [receivingEntityId], references: [id], onDelete: Restrict)
+  items             LogisticsShipmentItem[]
 
   @@index([materialRequestId])
   @@index([receivingEntityId])
   @@index([status])
   @@index([shippedAt])
   @@map("logistics_shipment")
+}
+
+model LogisticsShipmentItem {
+  id                String            @id @default(uuid()) @db.Uuid
+  shipmentId        String            @map("shipment_id") @db.Uuid
+  lineNumber        Int               @map("line_number")
+  stockPositionId   String            @map("stock_position_id") @db.Uuid
+  stockSeparationId String            @map("stock_separation_id") @db.Uuid
+  quantity          Int
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+  shipment          LogisticsShipment @relation(fields: [shipmentId], references: [id], onDelete: Restrict)
+  stockPosition     StockPosition     @relation(fields: [stockPositionId], references: [id], onDelete: Restrict)
+  stockSeparation   StockSeparation   @relation(fields: [stockSeparationId, stockPositionId], references: [id, stockPositionId], onDelete: Restrict)
+
+  @@unique([shipmentId, lineNumber], map: "logistics_shipment_item_shipment_line_key")
+  @@unique([shipmentId, stockSeparationId], map: "logistics_shipment_item_shipment_separation_key")
+  @@index([shipmentId])
+  @@index([stockPositionId])
+  @@index([stockSeparationId])
+  @@map("logistics_shipment_item")
 }
 
 model AuditEntry {
