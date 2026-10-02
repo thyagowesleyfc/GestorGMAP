@@ -122,6 +122,16 @@ PLAN
 
 Para mudanças críticas, use revisão independente por outro subagente ou por testes determinísticos.
 
+## Memória de trabalho (ai-memory)
+
+Este projeto usa `ai-memory` local como memória de longo prazo entre sessões do Codex.
+
+- Antes de iniciar uma tarefa, inspecione `git status` e consulte o ai-memory quando houver chance de histórico, decisão, handoff ou pendência relevante.
+- Durante o trabalho, registre no ai-memory apenas fatos duráveis: decisões, divergências dos specs, riscos confirmados, snapshots de estado e handoffs úteis.
+- Ao concluir, reporte o que foi realizado, arquivos alterados, checks executados e pendências, mantendo a memória coerente com esse relatório.
+- Quando uma mudança ou levantamento precisar ficar persistido, grave uma página no ai-memory e execute `ai-memory commit` para versionar a wiki.
+- Não registre segredos, tokens, cookies, senhas, chaves privadas ou dados sensíveis na memória.
+
 ## Fonte de verdade
 
 Ordem de prioridade:
