@@ -197,6 +197,25 @@ export class PostgresLogisticsDeliveryRegistrar implements LogisticsDeliveryRegi
       ]
     );
 
+    await client.query(
+      `insert into "outbox_event" (
+        "id", "event_type", "aggregate_type", "aggregate_id", "payload", "updated_at"
+      ) values ($1, $2, $3, $4, $5::jsonb, current_timestamp)`,
+      [
+        randomUUID(),
+        "logistics.delivery_registered",
+        "logistics_delivery",
+        deliveryId,
+        JSON.stringify({
+          deliveryId,
+          shipmentId: input.shipmentId,
+          acceptanceStatus: input.acceptanceStatus,
+          deliveredAt: input.deliveredAt.toISOString(),
+          correlationId: input.correlationId
+        })
+      ]
+    );
+
     return {
       ok: true,
       deliveryId,

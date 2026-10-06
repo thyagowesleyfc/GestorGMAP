@@ -82,6 +82,12 @@ enum CommandIdempotencyStatus {
   FAILED
 }
 
+enum OutboxEventStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
 enum MaterialConfigurationType {
   KIT
   COMPOSTO
@@ -944,6 +950,28 @@ model LogisticsDelivery {
   @@index([acceptanceStatus])
   @@index([deliveredAt])
   @@map("logistics_delivery")
+}
+
+model OutboxEvent {
+  id            String            @id @default(uuid()) @db.Uuid
+  eventType     String            @map("event_type") @db.VarChar(160)
+  aggregateType String            @map("aggregate_type") @db.VarChar(120)
+  aggregateId   String            @map("aggregate_id") @db.VarChar(120)
+  payload       Json
+  status        OutboxEventStatus @default(PENDING)
+  createdAt     DateTime          @default(now()) @map("created_at")
+  processedAt   DateTime?         @map("processed_at")
+  attempts      Int               @default(0)
+  nextAttemptAt DateTime?         @map("next_attempt_at")
+  lastError     String?           @map("last_error") @db.Text
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  @@index([eventType])
+  @@index([status, nextAttemptAt])
+  @@index([aggregateType, aggregateId], map: "outbox_event_aggregate_lookup_idx")
+  @@index([createdAt])
+  @@index([processedAt])
+  @@map("outbox_event")
 }
 
 model AuditEntry {

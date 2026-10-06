@@ -75,7 +75,7 @@ describe("register logistics delivery", () => {
     ).resolves.toEqual({ ok: false, reason: "INVALID_SUMMARY" });
   });
 
-  it("registers a delivery acceptance idempotently without document, outbox or patrimony effects", async () => {
+  it("registers a delivery acceptance idempotently with outbox event and without document or recollection effects", async () => {
     const postgres = await new PostgreSqlContainer("postgres:17-alpine").start();
     const client = new Client({ connectionString: postgres.getConnectionUri() });
     const pool = new Pool({ connectionString: postgres.getConnectionUri(), max: 4 });
@@ -111,8 +111,18 @@ describe("register logistics delivery", () => {
         acceptanceStatus: "TOTAL"
       });
       await expectAuditEntries(client, 1);
+      await expectOutboxEventCount(client, 1);
       await expectIdempotencyRows(client, 1);
-      await expectNoDeferredSideEffects(client);
+      if (!first.ok) {
+        throw new Error("expected delivery registration to succeed");
+      }
+      await expectOutboxEvents(client, {
+        deliveryId: first.deliveryId,
+        shipmentId: seed.totalShipmentId,
+        acceptanceStatus: "TOTAL",
+        expectedCount: 1
+      });
+      await expectNoFutureLogisticsTables(client);
     } finally {
       await pool.end().catch(() => undefined);
       await client.end().catch(() => undefined);
@@ -189,6 +199,7 @@ describe("register logistics delivery", () => {
       });
       await expectTotalDeliveries(client, 1);
       await expectAuditEntries(client, 1);
+      await expectOutboxEventCount(client, 1);
     } finally {
       await pool.end().catch(() => undefined);
       await client.end().catch(() => undefined);
@@ -237,6 +248,7 @@ describe("register logistics delivery", () => {
       ]);
       await expectTotalDeliveries(client, 1);
       await expectAuditEntries(client, 1);
+      await expectOutboxEventCount(client, 1);
     } finally {
       await pool.end().catch(() => undefined);
       await client.end().catch(() => undefined);
@@ -311,17 +323,78 @@ async function expectIdempotencyRows(client: Client, expectedCount: number): Pro
   expect(idempotencyRows.rows).toEqual([{ count: expectedCount }]);
 }
 
-async function expectNoDeferredSideEffects(client: Client): Promise<void> {
+async function expectOutboxEvents(
+  client: Client,
+  input: {
+    deliveryId: string;
+    shipmentId: string;
+    acceptanceStatus: "TOTAL" | "PARCIAL" | "RECUSADO";
+    expectedCount: number;
+  }
+): Promise<void> {
+  const events = await client.query<{
+    count: number;
+    event_type: string | null;
+    aggregate_type: string | null;
+    aggregate_id: string | null;
+    status: string | null;
+    attempts: number | null;
+    payload: {
+      deliveryId?: string;
+      shipmentId?: string;
+      acceptanceStatus?: string;
+    } | null;
+  }>(
+    `select count(*)::int as count,
+            min("event_type") as event_type,
+            min("aggregate_type") as aggregate_type,
+            min("aggregate_id") as aggregate_id,
+            min("status"::text) as status,
+            min("attempts")::int as attempts,
+            min("payload"::text)::jsonb as payload
+       from "outbox_event"
+      where "aggregate_id" = $1`,
+    [input.deliveryId]
+  );
+
+  expect(events.rows).toEqual([
+    {
+      count: input.expectedCount,
+      event_type: input.expectedCount === 0 ? null : "logistics.delivery_registered",
+      aggregate_type: input.expectedCount === 0 ? null : "logistics_delivery",
+      aggregate_id: input.expectedCount === 0 ? null : input.deliveryId,
+      status: input.expectedCount === 0 ? null : "PENDING",
+      attempts: input.expectedCount === 0 ? null : 0,
+      payload:
+        input.expectedCount === 0
+          ? null
+          : expect.objectContaining({
+              deliveryId: input.deliveryId,
+              shipmentId: input.shipmentId,
+              acceptanceStatus: input.acceptanceStatus
+            })
+    }
+  ]);
+}
+
+async function expectOutboxEventCount(client: Client, expectedCount: number): Promise<void> {
+  const events = await client.query<{ count: number }>(
+    `select count(*)::int as count from "outbox_event"`
+  );
+
+  expect(events.rows).toEqual([{ count: expectedCount }]);
+}
+
+async function expectNoFutureLogisticsTables(client: Client): Promise<void> {
   const absentTables = await client.query<{ count: number }>(
     `select count(*)::int as count
        from information_schema.tables
       where table_schema = 'public'
-        and table_name in ('logistics_delivery_document', 'logistics_recollection', 'outbox_event')`
+        and table_name in ('logistics_delivery_document', 'logistics_recollection')`
   );
 
   expect(absentTables.rows).toEqual([{ count: 0 }]);
 }
-
 type DeliverySeed = {
   totalShipmentId: string;
   partialShipmentId: string;
