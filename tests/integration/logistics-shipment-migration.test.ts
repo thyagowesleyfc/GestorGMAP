@@ -35,7 +35,7 @@ describe("logistics shipment migration", () => {
         `select table_name
            from information_schema.tables
           where table_schema = 'public'
-            and table_name in ('logistics_shipment', 'logistics_delivery')
+            and table_name in ('logistics_shipment')
           order by table_name`
       );
 

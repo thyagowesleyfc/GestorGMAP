@@ -140,6 +140,12 @@ enum LogisticsShipmentStatus {
   REGISTRADA
 }
 
+enum LogisticsDeliveryAcceptanceStatus {
+  TOTAL
+  PARCIAL
+  RECUSADO
+}
+
 model Person {
   id          String        @id @default(uuid()) @db.Uuid
   displayName String        @map("display_name") @db.VarChar(160)
@@ -892,6 +898,7 @@ model LogisticsShipment {
   materialRequest   MaterialRequest         @relation(fields: [materialRequestId], references: [id], onDelete: Restrict)
   receivingEntity   Entity                  @relation(fields: [receivingEntityId], references: [id], onDelete: Restrict)
   items             LogisticsShipmentItem[]
+  delivery          LogisticsDelivery?
 
   @@index([materialRequestId])
   @@index([receivingEntityId])
@@ -919,6 +926,24 @@ model LogisticsShipmentItem {
   @@index([stockPositionId])
   @@index([stockSeparationId])
   @@map("logistics_shipment_item")
+}
+
+model LogisticsDelivery {
+  id               String                            @id @default(uuid()) @db.Uuid
+  code             String                            @unique @db.VarChar(80)
+  shipmentId       String                            @unique @map("shipment_id") @db.Uuid
+  acceptanceStatus LogisticsDeliveryAcceptanceStatus @map("acceptance_status")
+  deliveredAt      DateTime                          @map("delivered_at")
+  summary          String                            @db.VarChar(500)
+  version          Int                               @default(1)
+  createdAt        DateTime                          @default(now()) @map("created_at")
+  updatedAt        DateTime                          @updatedAt @map("updated_at")
+  shipment         LogisticsShipment                 @relation(fields: [shipmentId], references: [id], onDelete: Restrict)
+
+  @@index([shipmentId])
+  @@index([acceptanceStatus])
+  @@index([deliveredAt])
+  @@map("logistics_delivery")
 }
 
 model AuditEntry {
