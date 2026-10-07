@@ -82,6 +82,20 @@ enum CommandIdempotencyStatus {
   FAILED
 }
 
+enum InternalNotificationTargetType {
+  USER
+  TIME
+  LIDER
+  GERENCIA
+}
+
+enum InternalNotificationStatus {
+  CRIADA
+  LIDA
+  ARQUIVADA
+  RESOLVIDA
+}
+
 enum OutboxEventStatus {
   PENDING
   PROCESSED
@@ -189,6 +203,7 @@ model UserAccount {
   receivingEntryItemRegularizations ReceivingEntryItemRegularization[]
   auditEntries                      AuditEntry[]
   logisticsDeliveryDocuments        LogisticsDeliveryDocument[]
+  internalNotifications             InternalNotification[]
   MaterialRequest                   MaterialRequest[]
 
   @@index([personId])
@@ -991,6 +1006,34 @@ model LogisticsDeliveryDocument {
   @@index([uploadedByUserId])
   @@index([sha256])
   @@map("logistics_delivery_document")
+}
+
+model InternalNotification {
+  id                String                         @id @default(uuid()) @db.Uuid
+  targetType        InternalNotificationTargetType @map("target_type")
+  targetUserId      String?                        @map("target_user_id") @db.Uuid
+  targetTeamContext String?                        @map("target_team_context") @db.VarChar(120)
+  status            InternalNotificationStatus     @default(CRIADA)
+  title             String                         @db.VarChar(160)
+  body              String                         @db.VarChar(1000)
+  actionRequired    Boolean                        @default(false) @map("action_required")
+  relatedType       String?                        @map("related_type") @db.VarChar(120)
+  relatedId         String?                        @map("related_id") @db.VarChar(120)
+  correlationId     String                         @map("correlation_id") @db.VarChar(160)
+  readAt            DateTime?                      @map("read_at")
+  archivedAt        DateTime?                      @map("archived_at")
+  resolvedAt        DateTime?                      @map("resolved_at")
+  createdAt         DateTime                       @default(now()) @map("created_at")
+  updatedAt         DateTime                       @updatedAt @map("updated_at")
+  targetUser        UserAccount?                   @relation(fields: [targetUserId], references: [id], onDelete: Restrict)
+
+  @@index([targetUserId])
+  @@index([targetType, targetTeamContext])
+  @@index([status])
+  @@index([relatedType, relatedId], map: "internal_notification_related_lookup_idx")
+  @@index([correlationId])
+  @@index([createdAt])
+  @@map("internal_notification")
 }
 
 model OutboxEvent {
