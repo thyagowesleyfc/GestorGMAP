@@ -6,6 +6,9 @@ import { promisify } from "node:util";
 
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
 import { Client, Pool } from "pg";
+
+import type { EmailSender } from "../../src/worker/email/email-sender";
+import { LogisticsDeliveryRegisteredEmailHandler } from "../../src/worker/outbox/logistics-delivery-registered-email-handler";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -134,6 +137,64 @@ describe("process outbox events", () => {
     }
   });
 
+  it("routes delivery registered events through EmailSender and retries sender failures", async () => {
+    const postgres = await new PostgreSqlContainer("postgres:17-alpine").start();
+    const client = new Client({ connectionString: postgres.getConnectionUri() });
+    const pool = new Pool({ connectionString: postgres.getConnectionUri(), max: 4 });
+
+    try {
+      await runPrismaMigrateDeploy(postgres.getConnectionUri());
+      await client.connect();
+
+      const now = new Date("2026-09-25T20:00:00.000Z");
+      const successEvent = await insertOutboxEvent(client, { createdAt: now });
+      const failingEvent = await insertOutboxEvent(client, { createdAt: now });
+      const sentSubjects: string[] = [];
+      const sender: EmailSender = {
+        send: async (message) => {
+          sentSubjects.push(message.subject);
+
+          if (message.metadata?.eventId === failingEvent) {
+            throw new Error("provedor de e-mail indisponivel");
+          }
+        }
+      };
+      const handler = new LogisticsDeliveryRegisteredEmailHandler(sender, {
+        recipients: ["gmap-logistica@example.test"]
+      });
+      const worker = new ProcessOutboxEvents(pool, handler);
+
+      const result = await worker.processBatch({
+        batchSize: 10,
+        now,
+        retryPolicy: { maxAttempts: 3, backoffMs: () => 60_000 }
+      });
+
+      expect(result).toEqual({ processed: 1, retried: 1, failed: 0 });
+      expect(sentSubjects).toEqual([
+        "Entrega registrada no GESTOR GMAP: TOTAL",
+        "Entrega registrada no GESTOR GMAP: TOTAL"
+      ]);
+      await expectOutboxState(client, successEvent, {
+        status: "PROCESSED",
+        attempts: 0,
+        processedAt: now,
+        nextAttemptAt: null,
+        lastError: null
+      });
+      await expectOutboxState(client, failingEvent, {
+        status: "PENDING",
+        attempts: 1,
+        processedAt: null,
+        nextAttemptAt: new Date("2026-09-25T20:01:00.000Z"),
+        lastError: "provedor de e-mail indisponivel"
+      });
+    } finally {
+      await pool.end().catch(() => undefined);
+      await client.end().catch(() => undefined);
+      await postgres.stop();
+    }
+  });
   it("uses database locks so concurrent workers do not process the same event twice", async () => {
     const postgres = await new PostgreSqlContainer("postgres:17-alpine").start();
     const client = new Client({ connectionString: postgres.getConnectionUri() });
@@ -197,7 +258,13 @@ async function insertOutboxEvent(
       "logistics.delivery_registered",
       "logistics_delivery",
       randomUUID(),
-      JSON.stringify({ deliveryId: id, acceptanceStatus: "TOTAL" }),
+      JSON.stringify({
+        deliveryId: id,
+        shipmentId: "shipment-" + id,
+        acceptanceStatus: "TOTAL",
+        deliveredAt: "2026-09-25T13:00:00.000Z",
+        correlationId: "corr-" + id
+      }),
       input.attempts ?? 0,
       input.createdAt ?? new Date("2026-09-25T15:00:00.000Z"),
       input.nextAttemptAt ?? null
