@@ -23,7 +23,7 @@ async function runPrismaMigrateDeploy(databaseUrl: string): Promise<void> {
 }
 
 describe("logistics delivery migration", () => {
-  it("creates delivery acceptance headers without recollection", async () => {
+  it("creates delivery acceptance headers alongside recollection base", async () => {
     const postgres = await new PostgreSqlContainer("postgres:17-alpine").start();
     const client = new Client({ connectionString: postgres.getConnectionUri() });
 
@@ -41,7 +41,8 @@ describe("logistics delivery migration", () => {
 
       expect(tables.rows.map((row) => row.table_name)).toEqual([
         "logistics_delivery",
-        "logistics_delivery_document"
+        "logistics_delivery_document",
+        "logistics_recollection"
       ]);
 
       const statuses = await client.query<{ enumlabel: string }>(

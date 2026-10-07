@@ -122,7 +122,7 @@ describe("register logistics delivery", () => {
         acceptanceStatus: "TOTAL",
         expectedCount: 1
       });
-      await expectNoFutureLogisticsTables(client);
+      await expectNoRecollections(client);
     } finally {
       await pool.end().catch(() => undefined);
       await client.end().catch(() => undefined);
@@ -385,15 +385,12 @@ async function expectOutboxEventCount(client: Client, expectedCount: number): Pr
   expect(events.rows).toEqual([{ count: expectedCount }]);
 }
 
-async function expectNoFutureLogisticsTables(client: Client): Promise<void> {
-  const absentTables = await client.query<{ count: number }>(
-    `select count(*)::int as count
-       from information_schema.tables
-      where table_schema = 'public'
-        and table_name in ('logistics_recollection')`
+async function expectNoRecollections(client: Client): Promise<void> {
+  const recollections = await client.query<{ count: number }>(
+    `select count(*)::int as count from "logistics_recollection"`
   );
 
-  expect(absentTables.rows).toEqual([{ count: 0 }]);
+  expect(recollections.rows).toEqual([{ count: 0 }]);
 }
 type DeliverySeed = {
   totalShipmentId: string;

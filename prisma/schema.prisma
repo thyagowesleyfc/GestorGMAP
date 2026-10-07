@@ -170,6 +170,13 @@ enum LogisticsDeliveryDocumentOrigin {
   EXTERNO
 }
 
+enum LogisticsRecollectionStatus {
+  SOLICITADA
+  AUTORIZADA
+  EXECUTADA
+  CANCELADA
+}
+
 enum LogisticsDeliveryAcceptanceStatus {
   TOTAL
   PARCIAL
@@ -204,6 +211,7 @@ model UserAccount {
   auditEntries                      AuditEntry[]
   logisticsDeliveryDocuments        LogisticsDeliveryDocument[]
   internalNotifications             InternalNotification[]
+  logisticsRecollectionsRequested   LogisticsRecollection[]
   MaterialRequest                   MaterialRequest[]
 
   @@index([personId])
@@ -318,24 +326,26 @@ model Municipality {
 }
 
 model Entity {
-  id                 String              @id @default(uuid()) @db.Uuid
-  code               String              @unique @db.VarChar(64)
-  name               String              @db.VarChar(180)
-  entityType         EntityType          @map("entity_type")
-  greId              String              @map("gre_id") @db.Uuid
-  municipalityId     String?             @map("municipality_id") @db.Uuid
-  parentEntityId     String?             @map("parent_entity_id") @db.Uuid
-  active             Boolean             @default(true)
-  createdAt          DateTime            @default(now()) @map("created_at")
-  updatedAt          DateTime            @updatedAt @map("updated_at")
-  gre                Gre                 @relation(fields: [greId], references: [id], onDelete: Restrict)
-  municipality       Municipality?       @relation(fields: [municipalityId], references: [id], onDelete: Restrict)
-  parentEntity       Entity?             @relation("EntityHierarchy", fields: [parentEntityId], references: [id], onDelete: Restrict)
-  childEntities      Entity[]            @relation("EntityHierarchy")
-  receivingEntries   ReceivingEntry[]
-  stockPositions     StockPosition[]
-  MaterialRequest    MaterialRequest[]
-  logisticsShipments LogisticsShipment[]
+  id                              String                  @id @default(uuid()) @db.Uuid
+  code                            String                  @unique @db.VarChar(64)
+  name                            String                  @db.VarChar(180)
+  entityType                      EntityType              @map("entity_type")
+  greId                           String                  @map("gre_id") @db.Uuid
+  municipalityId                  String?                 @map("municipality_id") @db.Uuid
+  parentEntityId                  String?                 @map("parent_entity_id") @db.Uuid
+  active                          Boolean                 @default(true)
+  createdAt                       DateTime                @default(now()) @map("created_at")
+  updatedAt                       DateTime                @updatedAt @map("updated_at")
+  gre                             Gre                     @relation(fields: [greId], references: [id], onDelete: Restrict)
+  municipality                    Municipality?           @relation(fields: [municipalityId], references: [id], onDelete: Restrict)
+  parentEntity                    Entity?                 @relation("EntityHierarchy", fields: [parentEntityId], references: [id], onDelete: Restrict)
+  childEntities                   Entity[]                @relation("EntityHierarchy")
+  receivingEntries                ReceivingEntry[]
+  stockPositions                  StockPosition[]
+  MaterialRequest                 MaterialRequest[]
+  logisticsShipments              LogisticsShipment[]
+  logisticsRecollectionsRequested LogisticsRecollection[] @relation("LogisticsRecollectionRequestingEntity")
+  logisticsRecollectionsReceiving LogisticsRecollection[] @relation("LogisticsRecollectionReceivingEntity")
 
   @@index([entityType])
   @@index([greId])
@@ -1006,6 +1016,34 @@ model LogisticsDeliveryDocument {
   @@index([uploadedByUserId])
   @@index([sha256])
   @@map("logistics_delivery_document")
+}
+
+model LogisticsRecollection {
+  id                 String                      @id @default(uuid()) @db.Uuid
+  code               String                      @unique @db.VarChar(80)
+  requestingEntityId String                      @map("requesting_entity_id") @db.Uuid
+  receivingEntityId  String                      @map("receiving_entity_id") @db.Uuid
+  requestedByUserId  String?                     @map("requested_by_user_id") @db.Uuid
+  status             LogisticsRecollectionStatus @default(SOLICITADA)
+  requestedAt        DateTime                    @map("requested_at")
+  authorizedAt       DateTime?                   @map("authorized_at")
+  executedAt         DateTime?                   @map("executed_at")
+  summary            String                      @db.VarChar(500)
+  version            Int                         @default(1)
+  createdAt          DateTime                    @default(now()) @map("created_at")
+  updatedAt          DateTime                    @updatedAt @map("updated_at")
+  requestingEntity   Entity                      @relation("LogisticsRecollectionRequestingEntity", fields: [requestingEntityId], references: [id], onDelete: Restrict)
+  receivingEntity    Entity                      @relation("LogisticsRecollectionReceivingEntity", fields: [receivingEntityId], references: [id], onDelete: Restrict)
+  requestedByUser    UserAccount?                @relation(fields: [requestedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([requestingEntityId])
+  @@index([receivingEntityId])
+  @@index([requestedByUserId])
+  @@index([status])
+  @@index([requestedAt])
+  @@index([authorizedAt])
+  @@index([executedAt])
+  @@map("logistics_recollection")
 }
 
 model InternalNotification {
