@@ -441,15 +441,12 @@ async function expectNoDeliverySideEffects(client: Client): Promise<void> {
   const deliveries = await client.query<{ count: number }>(
     `select count(*)::int as count from "logistics_delivery"`
   );
-  const deliveryDocumentTables = await client.query<{ count: number }>(
-    `select count(*)::int as count
-       from information_schema.tables
-      where table_schema = 'public'
-        and table_name in ('logistics_delivery_document')`
+  const deliveryDocuments = await client.query<{ count: number }>(
+    `select count(*)::int as count from "logistics_delivery_document"`
   );
 
   expect(deliveries.rows).toEqual([{ count: 0 }]);
-  expect(deliveryDocumentTables.rows).toEqual([{ count: 0 }]);
+  expect(deliveryDocuments.rows).toEqual([{ count: 0 }]);
 }
 
 type ShipmentSeed = {

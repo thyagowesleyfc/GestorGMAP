@@ -390,7 +390,7 @@ async function expectNoFutureLogisticsTables(client: Client): Promise<void> {
     `select count(*)::int as count
        from information_schema.tables
       where table_schema = 'public'
-        and table_name in ('logistics_delivery_document', 'logistics_recollection')`
+        and table_name in ('logistics_recollection')`
   );
 
   expect(absentTables.rows).toEqual([{ count: 0 }]);

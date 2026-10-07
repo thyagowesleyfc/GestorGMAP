@@ -146,6 +146,16 @@ enum LogisticsShipmentStatus {
   REGISTRADA
 }
 
+enum LogisticsDeliveryDocumentType {
+  COMPROVANTE_ENTREGA
+  TERMO_ACEITE
+  OUTRO
+}
+
+enum LogisticsDeliveryDocumentOrigin {
+  EXTERNO
+}
+
 enum LogisticsDeliveryAcceptanceStatus {
   TOTAL
   PARCIAL
@@ -178,6 +188,7 @@ model UserAccount {
   receivingEntryDocuments           ReceivingEntryDocument[]
   receivingEntryItemRegularizations ReceivingEntryItemRegularization[]
   auditEntries                      AuditEntry[]
+  logisticsDeliveryDocuments        LogisticsDeliveryDocument[]
   MaterialRequest                   MaterialRequest[]
 
   @@index([personId])
@@ -945,11 +956,41 @@ model LogisticsDelivery {
   createdAt        DateTime                          @default(now()) @map("created_at")
   updatedAt        DateTime                          @updatedAt @map("updated_at")
   shipment         LogisticsShipment                 @relation(fields: [shipmentId], references: [id], onDelete: Restrict)
+  documents        LogisticsDeliveryDocument[]
 
   @@index([shipmentId])
   @@index([acceptanceStatus])
   @@index([deliveredAt])
   @@map("logistics_delivery")
+}
+
+model LogisticsDeliveryDocument {
+  id               String                          @id @default(uuid()) @db.Uuid
+  deliveryId       String                          @map("delivery_id") @db.Uuid
+  documentType     LogisticsDeliveryDocumentType   @map("document_type")
+  origin           LogisticsDeliveryDocumentOrigin @default(EXTERNO)
+  documentNumber   String?                         @map("document_number") @db.VarChar(80)
+  documentDate     DateTime?                       @map("document_date") @db.Date
+  issuerName       String?                         @map("issuer_name") @db.VarChar(180)
+  fileName         String?                         @map("file_name") @db.VarChar(255)
+  contentType      String?                         @map("content_type") @db.VarChar(120)
+  sizeBytes        BigInt?                         @map("size_bytes")
+  storageKey       String?                         @unique @map("storage_key") @db.Text
+  sha256           String?                         @db.Char(64)
+  uploadedByUserId String?                         @map("uploaded_by_user_id") @db.Uuid
+  notes            String?                         @db.VarChar(500)
+  version          Int                             @default(1)
+  createdAt        DateTime                        @default(now()) @map("created_at")
+  updatedAt        DateTime                        @updatedAt @map("updated_at")
+  delivery         LogisticsDelivery               @relation(fields: [deliveryId], references: [id], onDelete: Restrict)
+  uploadedByUser   UserAccount?                    @relation(fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([deliveryId])
+  @@index([documentType])
+  @@index([documentDate])
+  @@index([uploadedByUserId])
+  @@index([sha256])
+  @@map("logistics_delivery_document")
 }
 
 model OutboxEvent {
