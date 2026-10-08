@@ -6,6 +6,8 @@ A base de processamento da Outbox existe como um processador de lote reutilizave
 
 `resolveLogisticsOutboxWorkerConfig` valida as variaveis operacionais do Worker de Logistica (`DATABASE_URL`, `GMAP_OUTBOX_DELIVERY_EMAIL_RECIPIENTS`, `GMAP_OUTBOX_MANAGEMENT_TARGET_TEAM_CONTEXT`, `GMAP_OUTBOX_BATCH_SIZE`).
 
+`runLogisticsOutboxBatch` executa um unico lote configurado, sem loop continuo.
+
 `createLogisticsOutboxWorker` monta a composicao atual do Worker de Logistica com dependencias injetadas:
 
 - `Pool` PostgreSQL;
