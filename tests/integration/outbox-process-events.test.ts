@@ -8,9 +8,8 @@ import { PostgreSqlContainer } from "@testcontainers/postgresql";
 import { Client, Pool } from "pg";
 
 import type { EmailSender } from "../../src/worker/email/email-sender";
+import { createLogisticsOutboxWorker } from "../../src/worker/outbox/create-logistics-outbox-worker";
 import { LogisticsDeliveryRegisteredEmailHandler } from "../../src/worker/outbox/logistics-delivery-registered-email-handler";
-import { LogisticsRecollectionExecutedNotificationHandler } from "../../src/worker/outbox/logistics-recollection-executed-notification-handler";
-import { OutboxEventRouter } from "../../src/worker/outbox/outbox-event-router";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -221,25 +220,14 @@ describe("process outbox events", () => {
           sentSubjects.push(message.subject);
         }
       };
-      const router = new OutboxEventRouter([
-        {
-          eventType: "logistics.delivery_registered",
-          aggregateType: "logistics_delivery",
-          handler: new LogisticsDeliveryRegisteredEmailHandler(sender, {
-            recipients: ["gmap-logistica@example.test"]
-          })
-        },
-        {
-          eventType: "logistics.recollection_executed",
-          aggregateType: "logistics_recollection",
-          handler: new LogisticsRecollectionExecutedNotificationHandler(pool, {
-            targetTeamContext: "GERENCIA_MATERIAIS"
-          })
-        }
-      ]);
-      const worker = new ProcessOutboxEvents(pool, router);
+      const worker = createLogisticsOutboxWorker({
+        pool,
+        emailSender: sender,
+        deliveryEmailRecipients: ["gmap-logistica@example.test"],
+        managementTargetTeamContext: "GERENCIA_MATERIAIS"
+      });
 
-      const result = await worker.processBatch({ batchSize: 10, now });
+      const result = await worker.processor.processBatch({ batchSize: 10, now });
 
       expect(result).toEqual({ processed: 2, retried: 0, failed: 0 });
       expect(sentSubjects).toEqual(["Entrega registrada no GESTOR GMAP: TOTAL"]);
