@@ -2,6 +2,11 @@
 
 Pasta reservada para o Worker Node.js do GESTOR GMAP.
 
-A base de processamento da Outbox existe como um processador de lote reutilizavel. O evento `logistics.delivery_registered` ja possui handler que monta e envia mensagem por uma porta `EmailSender`, ainda sem loop de processo/container dedicado e sem provider real de e-mail.
+A base de processamento da Outbox existe como um processador de lote reutilizavel. O worker tambem possui um roteador simples de handlers por `event_type` e `aggregate_type`, permitindo processar efeitos assincronos diferentes sem acoplar as regras em um unico handler.
 
-O worker funcional completo deve ser adicionado apenas quando o incremento de notificacao/e-mail assincrono exigir essa integracao operacional.
+Eventos cobertos nesta base:
+
+- `logistics.delivery_registered`: monta e envia mensagem por uma porta `EmailSender`, ainda sem provider real de e-mail.
+- `logistics.recollection_executed`: cria notificacao interna para a Gerencia.
+
+Ainda nao ha loop de processo/container dedicado. Essa integracao operacional deve ser adicionada em incremento proprio, quando houver provider/configuracao real para os efeitos assincronos.
