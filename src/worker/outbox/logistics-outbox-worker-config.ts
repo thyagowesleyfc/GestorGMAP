@@ -1,8 +1,14 @@
+import {
+  resolveSmtpEmailSenderConfig,
+  type SmtpEmailSenderConfig
+} from "../email/smtp-email-sender";
+
 export type LogisticsOutboxWorkerConfig = {
   databaseUrl: string;
   deliveryEmailRecipients: string[];
   managementTargetTeamContext: string;
   batchSize: number;
+  smtpEmail: SmtpEmailSenderConfig;
 };
 
 export type LogisticsOutboxWorkerEnv = Readonly<Record<string, string | undefined>>;
@@ -20,12 +26,14 @@ export function resolveLogisticsOutboxWorkerConfig(
     "GMAP_OUTBOX_MANAGEMENT_TARGET_TEAM_CONTEXT"
   );
   const batchSize = parseBatchSize(env.GMAP_OUTBOX_BATCH_SIZE);
+  const smtpEmail = resolveSmtpEmailSenderConfig(env);
 
   return {
     databaseUrl,
     deliveryEmailRecipients,
     managementTargetTeamContext,
-    batchSize
+    batchSize,
+    smtpEmail
   };
 }
 
