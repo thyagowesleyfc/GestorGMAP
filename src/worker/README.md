@@ -8,7 +8,7 @@ A base de processamento da Outbox existe como um processador de lote reutilizave
 
 `runLogisticsOutboxBatch` executa um unico lote configurado, sem loop continuo.
 
-`createLogisticsOutboxWorker` monta a composicao atual do Worker de Logistica com dependencias injetadas:
+`createLogisticsOutboxWorker` monta a composicao atual do Worker de Logistica com dependencias injetadas e restringe o processamento aos eventos configurados para este worker:
 
 - `Pool` PostgreSQL;
 - porta `EmailSender`;

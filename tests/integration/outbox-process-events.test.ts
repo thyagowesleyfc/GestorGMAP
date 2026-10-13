@@ -206,6 +206,9 @@ describe("process outbox events", () => {
       await client.connect();
 
       const now = new Date("2026-09-25T20:40:00.000Z");
+      const materialRequestEvent = await insertMaterialRequestFinalizedEvent(client, {
+        createdAt: new Date("2026-09-25T20:29:00.000Z")
+      });
       const deliveryEvent = await insertOutboxEvent(client, {
         createdAt: new Date("2026-09-25T20:30:00.000Z")
       });
@@ -292,6 +295,13 @@ describe("process outbox events", () => {
         status: "PROCESSED",
         attempts: 0,
         processedAt: now,
+        nextAttemptAt: null,
+        lastError: null
+      });
+      await expectOutboxState(client, materialRequestEvent, {
+        status: "PENDING",
+        attempts: 0,
+        processedAt: null,
         nextAttemptAt: null,
         lastError: null
       });
@@ -453,6 +463,38 @@ async function insertRecollectionExecutedEvent(
         status: "EXECUTADA",
         executedAt: "2026-09-25T20:20:00.000Z",
         correlationId: `corr-${input.recollectionId}`
+      }),
+      input.createdAt
+    ]
+  );
+
+  return id;
+}
+
+async function insertMaterialRequestFinalizedEvent(
+  client: Client,
+  input: {
+    createdAt: Date;
+  }
+): Promise<string> {
+  const id = randomUUID();
+  const materialRequestId = randomUUID();
+
+  await client.query(
+    `insert into "outbox_event" (
+      "id", "event_type", "aggregate_type", "aggregate_id", "payload", "created_at", "updated_at"
+    ) values ($1, $2, $3, $4, $5::jsonb, $6, current_timestamp)`,
+    [
+      id,
+      "requests.material_request_finalized",
+      "material_request",
+      materialRequestId,
+      JSON.stringify({
+        materialRequestId,
+        status: "FINALIZADA",
+        finalizedAt: "2026-09-25T20:10:00.000Z",
+        shipmentCount: 1,
+        correlationId: `corr-${materialRequestId}`
       }),
       input.createdAt
     ]

@@ -4,7 +4,7 @@ import type { EmailSender } from "../email/email-sender";
 import { LogisticsDeliveryRegisteredEmailHandler } from "./logistics-delivery-registered-email-handler";
 import { LogisticsDeliveryRegisteredNotificationHandler } from "./logistics-delivery-registered-notification-handler";
 import { LogisticsRecollectionExecutedNotificationHandler } from "./logistics-recollection-executed-notification-handler";
-import { OutboxEventRouter } from "./outbox-event-router";
+import { OutboxEventRouter, type OutboxEventRoute } from "./outbox-event-router";
 import { ProcessOutboxEvents } from "./process-outbox-events";
 
 export type CreateLogisticsOutboxWorkerInput = {
@@ -31,7 +31,7 @@ export function createLogisticsOutboxWorker(
   const deliveryEmailHandler = new LogisticsDeliveryRegisteredEmailHandler(input.emailSender, {
     recipients: input.deliveryEmailRecipients
   });
-  const handler = new OutboxEventRouter([
+  const routes: OutboxEventRoute[] = [
     {
       eventType: "logistics.delivery_registered",
       aggregateType: "logistics_delivery",
@@ -49,10 +49,16 @@ export function createLogisticsOutboxWorker(
         targetTeamContext: input.managementTargetTeamContext
       })
     }
-  ]);
+  ];
+  const handler = new OutboxEventRouter(routes);
 
   return {
     handler,
-    processor: new ProcessOutboxEvents(input.pool, handler)
+    processor: new ProcessOutboxEvents(input.pool, handler, {
+      supportedEvents: routes.map((route) => ({
+        eventType: route.eventType,
+        aggregateType: route.aggregateType
+      }))
+    })
   };
 }

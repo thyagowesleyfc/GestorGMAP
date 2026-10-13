@@ -24,6 +24,15 @@ export type ProcessOutboxEventsOptions = {
   retryPolicy?: OutboxRetryPolicy;
 };
 
+export type OutboxEventSelector = {
+  eventType: string;
+  aggregateType: string;
+};
+
+export type ProcessOutboxEventsConstructorOptions = {
+  supportedEvents?: OutboxEventSelector[];
+};
+
 export type ProcessOutboxEventsResult = {
   processed: number;
   retried: number;
@@ -47,10 +56,15 @@ const DEFAULT_RETRY_POLICY: OutboxRetryPolicy = {
 };
 
 export class ProcessOutboxEvents {
+  private readonly supportedEvents: OutboxEventSelector[];
+
   constructor(
     private readonly pool: Pool,
-    private readonly handler: OutboxEventHandler
-  ) {}
+    private readonly handler: OutboxEventHandler,
+    options: ProcessOutboxEventsConstructorOptions = {}
+  ) {
+    this.supportedEvents = options.supportedEvents ?? [];
+  }
 
   async processBatch(options: ProcessOutboxEventsOptions = {}): Promise<ProcessOutboxEventsResult> {
     const batchSize = options.batchSize ?? DEFAULT_BATCH_SIZE;
@@ -123,19 +137,38 @@ export class ProcessOutboxEvents {
   }
 
   private async claimNext(client: PoolClient, now: Date): Promise<OutboxEventRow | null> {
+    const queryParams: unknown[] = [now];
+    const supportedEventsFilter = buildSupportedEventsFilter(this.supportedEvents, queryParams);
     const events = await client.query<OutboxEventRow>(
       `select "id", "event_type", "aggregate_type", "aggregate_id", "payload", "attempts"
          from "outbox_event"
         where "status" = 'PENDING'
           and ("next_attempt_at" is null or "next_attempt_at" <= $1)
+          ${supportedEventsFilter}
         order by "created_at", "id"
         limit 1
         for update skip locked`,
-      [now]
+      queryParams
     );
 
     return events.rows[0] ?? null;
   }
+}
+
+function buildSupportedEventsFilter(events: OutboxEventSelector[], params: unknown[]): string {
+  if (events.length === 0) {
+    return "";
+  }
+
+  const clauses = events.map((event) => {
+    params.push(event.eventType, event.aggregateType);
+    const eventTypeParam = params.length - 1;
+    const aggregateTypeParam = params.length;
+
+    return `("event_type" = $${eventTypeParam} and "aggregate_type" = $${aggregateTypeParam})`;
+  });
+
+  return `and (${clauses.join(" or ")})`;
 }
 
 function toOutboxEventRecord(row: OutboxEventRow): OutboxEventRecord {
