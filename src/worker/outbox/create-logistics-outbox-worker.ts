@@ -4,6 +4,7 @@ import type { EmailSender } from "../email/email-sender";
 import { LogisticsDeliveryRegisteredEmailHandler } from "./logistics-delivery-registered-email-handler";
 import { LogisticsDeliveryRegisteredNotificationHandler } from "./logistics-delivery-registered-notification-handler";
 import { LogisticsRecollectionExecutedNotificationHandler } from "./logistics-recollection-executed-notification-handler";
+import { MaterialRequestFinalizedNotificationHandler } from "./material-request-finalized-notification-handler";
 import { OutboxEventRouter, type OutboxEventRoute } from "./outbox-event-router";
 import { ProcessOutboxEvents } from "./process-outbox-events";
 
@@ -46,6 +47,13 @@ export function createLogisticsOutboxWorker(
       eventType: "logistics.recollection_executed",
       aggregateType: "logistics_recollection",
       handler: new LogisticsRecollectionExecutedNotificationHandler(input.pool, {
+        targetTeamContext: input.managementTargetTeamContext
+      })
+    },
+    {
+      eventType: "requests.material_request_finalized",
+      aggregateType: "material_request",
+      handler: new MaterialRequestFinalizedNotificationHandler(input.pool, {
         targetTeamContext: input.managementTargetTeamContext
       })
     }

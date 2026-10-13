@@ -6,7 +6,7 @@ import { createLogisticsOutboxWorker } from "../../../src/worker/outbox/create-l
 import type { OutboxEventRecord } from "../../../src/worker/outbox/process-outbox-events";
 
 describe("create logistics outbox worker", () => {
-  it("wires delivery emails and recollection notifications into the logistics outbox handler", async () => {
+  it("wires delivery emails, recollection and request notifications into the logistics outbox handler", async () => {
     const sent: EmailMessage[] = [];
     const notificationQueries: Array<{ text: string; values: unknown[] | undefined }> = [];
     const emailSender: EmailSender = {
@@ -29,6 +29,7 @@ describe("create logistics outbox worker", () => {
 
     await worker.handler.handle(deliveryEvent());
     await worker.handler.handle(recollectionEvent());
+    await worker.handler.handle(materialRequestFinalizedEvent());
 
     expect(worker.processor).toBeDefined();
     expect(sent).toEqual([
@@ -54,6 +55,15 @@ describe("create logistics outbox worker", () => {
           "logistics_recollection",
           "recollection-1",
           "corr-recollection-1"
+        ])
+      }),
+      expect.objectContaining({
+        values: expect.arrayContaining([
+          "GERENCIA_MATERIAIS",
+          "Solicitação finalizada",
+          "material_request",
+          "solicitacao-1",
+          "corr-solicitacao-1"
         ])
       })
     ]);
@@ -100,6 +110,23 @@ function recollectionEvent(): OutboxEventRecord {
       status: "EXECUTADA",
       executedAt: "2026-09-25T20:20:00.000Z",
       correlationId: "corr-recollection-1"
+    }
+  };
+}
+
+function materialRequestFinalizedEvent(): OutboxEventRecord {
+  return {
+    id: "event-solicitacao-1",
+    eventType: "requests.material_request_finalized",
+    aggregateType: "material_request",
+    aggregateId: "solicitacao-1",
+    attempts: 0,
+    payload: {
+      materialRequestId: "solicitacao-1",
+      status: "FINALIZADA",
+      finalizedAt: "2026-09-25T15:00:00.000Z",
+      shipmentCount: 2,
+      correlationId: "corr-solicitacao-1"
     }
   };
 }

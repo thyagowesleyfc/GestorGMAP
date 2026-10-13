@@ -232,7 +232,7 @@ describe("process outbox events", () => {
 
       const result = await worker.processor.processBatch({ batchSize: 10, now });
 
-      expect(result).toEqual({ processed: 2, retried: 0, failed: 0 });
+      expect(result).toEqual({ processed: 3, retried: 0, failed: 0 });
       expect(sentSubjects).toEqual(["Entrega registrada no GESTOR GMAP: TOTAL"]);
       await expectInternalNotifications(client, [
         {
@@ -250,6 +250,14 @@ describe("process outbox events", () => {
           relatedId: recollectionId,
           targetTeamContext: "GERENCIA_MATERIAIS",
           correlationId: `corr-${recollectionId}`
+        },
+        {
+          title: "Solicitação finalizada",
+          body: `A solicitação ${materialRequestEvent.materialRequestId} foi finalizada em 2026-09-25T20:10:00.000Z.`,
+          relatedType: "material_request",
+          relatedId: materialRequestEvent.materialRequestId,
+          targetTeamContext: "GERENCIA_MATERIAIS",
+          correlationId: `corr-${materialRequestEvent.materialRequestId}`
         }
       ]);
       await worker.handler.handle({
@@ -282,6 +290,14 @@ describe("process outbox events", () => {
           relatedId: recollectionId,
           targetTeamContext: "GERENCIA_MATERIAIS",
           correlationId: `corr-${recollectionId}`
+        },
+        {
+          title: "Solicitação finalizada",
+          body: `A solicitação ${materialRequestEvent.materialRequestId} foi finalizada em 2026-09-25T20:10:00.000Z.`,
+          relatedType: "material_request",
+          relatedId: materialRequestEvent.materialRequestId,
+          targetTeamContext: "GERENCIA_MATERIAIS",
+          correlationId: `corr-${materialRequestEvent.materialRequestId}`
         }
       ]);
       await expectOutboxState(client, deliveryEvent, {
@@ -299,9 +315,9 @@ describe("process outbox events", () => {
         lastError: null
       });
       await expectOutboxState(client, materialRequestEvent, {
-        status: "PENDING",
+        status: "PROCESSED",
         attempts: 0,
-        processedAt: null,
+        processedAt: now,
         nextAttemptAt: null,
         lastError: null
       });
@@ -351,6 +367,53 @@ describe("process outbox events", () => {
         processedAt: null,
         nextAttemptAt: new Date("2026-09-25T21:01:00.000Z"),
         lastError: "Payload de entrega registrada incompleto."
+      });
+    } finally {
+      await pool.end().catch(() => undefined);
+      await client.end().catch(() => undefined);
+      await postgres.stop();
+    }
+  });
+  it("retries material request finalized events with invalid notification payload", async () => {
+    const postgres = await new PostgreSqlContainer("postgres:17-alpine").start();
+    const client = new Client({ connectionString: postgres.getConnectionUri() });
+    const pool = new Pool({ connectionString: postgres.getConnectionUri(), max: 4 });
+
+    try {
+      await runPrismaMigrateDeploy(postgres.getConnectionUri());
+      await client.connect();
+
+      const now = new Date("2026-09-25T21:20:00.000Z");
+      const materialRequestEvent = await insertMaterialRequestFinalizedEvent(client, {
+        createdAt: now,
+        payloadOverride: { status: "DESPACHADA" }
+      });
+      const sender: EmailSender = {
+        send: async () => {
+          throw new Error("e-mail nao deveria ser enviado");
+        }
+      };
+      const worker = createLogisticsOutboxWorker({
+        pool,
+        emailSender: sender,
+        deliveryEmailRecipients: ["gmap-logistica@example.test"],
+        managementTargetTeamContext: "GERENCIA_MATERIAIS"
+      });
+
+      const result = await worker.processor.processBatch({
+        batchSize: 1,
+        now,
+        retryPolicy: { maxAttempts: 3, backoffMs: () => 60_000 }
+      });
+
+      expect(result).toEqual({ processed: 0, retried: 1, failed: 0 });
+      await expectInternalNotificationCount(client, 0);
+      await expectOutboxState(client, materialRequestEvent, {
+        status: "PENDING",
+        attempts: 1,
+        processedAt: null,
+        nextAttemptAt: new Date("2026-09-25T21:21:00.000Z"),
+        lastError: "Payload de solicitacao finalizada incompleto."
       });
     } finally {
       await pool.end().catch(() => undefined);
@@ -475,10 +538,19 @@ async function insertMaterialRequestFinalizedEvent(
   client: Client,
   input: {
     createdAt: Date;
+    payloadOverride?: Record<string, unknown>;
   }
-): Promise<string> {
+): Promise<{ eventId: string; materialRequestId: string }> {
   const id = randomUUID();
   const materialRequestId = randomUUID();
+  const payload = {
+    materialRequestId,
+    status: "FINALIZADA",
+    finalizedAt: "2026-09-25T20:10:00.000Z",
+    shipmentCount: 1,
+    correlationId: `corr-${materialRequestId}`,
+    ...input.payloadOverride
+  };
 
   await client.query(
     `insert into "outbox_event" (
@@ -489,18 +561,12 @@ async function insertMaterialRequestFinalizedEvent(
       "requests.material_request_finalized",
       "material_request",
       materialRequestId,
-      JSON.stringify({
-        materialRequestId,
-        status: "FINALIZADA",
-        finalizedAt: "2026-09-25T20:10:00.000Z",
-        shipmentCount: 1,
-        correlationId: `corr-${materialRequestId}`
-      }),
+      JSON.stringify(payload),
       input.createdAt
     ]
   );
 
-  return id;
+  return { eventId: id, materialRequestId };
 }
 
 async function expectInternalNotifications(
@@ -567,7 +633,7 @@ async function expectInternalNotificationCount(
 }
 async function expectOutboxState(
   client: Client,
-  id: string,
+  id: string | { eventId: string },
   expected: {
     status: "PENDING" | "PROCESSED" | "FAILED";
     attempts: number;
@@ -590,7 +656,7 @@ async function expectOutboxState(
             "last_error"
        from "outbox_event"
       where "id" = $1`,
-    [id]
+    [typeof id === "string" ? id : id.eventId]
   );
 
   expect(events.rows).toEqual([
