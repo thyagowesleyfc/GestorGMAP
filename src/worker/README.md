@@ -8,6 +8,10 @@ A base de processamento da Outbox existe como um processador de lote reutilizave
 
 `runLogisticsOutboxBatch` executa um unico lote configurado, sem loop continuo.
 
+`createConfiguredLogisticsOutboxWorker` monta a composicao operacional de lote unico a partir do ambiente: cria o `Pool` PostgreSQL, instancia `SmtpEmailSender`, monta `createLogisticsOutboxWorker` e expoe `close()` para encerrar conexoes.
+
+`runConfiguredLogisticsOutboxBatch` executa um lote com essa composicao configurada e sempre chama `close()` ao final, inclusive em falhas de processamento.
+
 `createLogisticsOutboxWorker` monta a composicao atual do Worker de Logistica com dependencias injetadas e restringe o processamento aos eventos configurados para este worker:
 
 - `Pool` PostgreSQL;
@@ -23,4 +27,4 @@ Eventos cobertos nesta base:
 - `logistics.recollection_executed`: cria notificacao interna para a Gerencia.
 - `requests.material_request_finalized`: cria notificacao interna para ciencia da Gerencia.
 
-Ainda nao ha loop de processo/container dedicado. Essa integracao operacional deve ser adicionada em incremento proprio para executar lotes continuamente ou via scheduler.
+Ainda nao ha loop de processo/container dedicado nem comando npm para disparo. Essa integracao operacional deve ser adicionada em incremento proprio para executar lotes continuamente ou via scheduler.
