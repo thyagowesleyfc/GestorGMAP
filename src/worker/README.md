@@ -17,7 +17,7 @@ A base de processamento da Outbox existe como um processador de lote reutilizave
 
 Eventos cobertos nesta base:
 
-- `logistics.delivery_registered`: monta e envia mensagem por uma porta `EmailSender`, ainda sem provider real de e-mail.
+- `logistics.delivery_registered`: cria notificacao interna para a Gerencia e monta/envia mensagem por uma porta `EmailSender`, ainda sem provider real de e-mail.
 - `logistics.recollection_executed`: cria notificacao interna para a Gerencia.
 
 Ainda nao ha loop de processo/container dedicado nem provider real de e-mail. Essa integracao operacional deve ser adicionada em incremento proprio, quando houver provider/configuracao real para os efeitos assincronos.
