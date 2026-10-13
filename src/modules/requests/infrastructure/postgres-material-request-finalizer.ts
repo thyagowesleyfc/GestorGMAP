@@ -201,6 +201,25 @@ export class PostgresMaterialRequestFinalizer implements MaterialRequestFinalize
       ]
     );
 
+    await client.query(
+      `insert into "outbox_event" (
+        "id", "event_type", "aggregate_type", "aggregate_id", "payload", "updated_at"
+      ) values ($1, $2, $3, $4, $5::jsonb, current_timestamp)`,
+      [
+        randomUUID(),
+        "requests.material_request_finalized",
+        "material_request",
+        input.materialRequestId,
+        JSON.stringify({
+          materialRequestId: input.materialRequestId,
+          status: "FINALIZADA",
+          finalizedAt: input.finalizedAt.toISOString(),
+          shipmentCount: shipments.rows.length,
+          correlationId: input.correlationId
+        })
+      ]
+    );
+
     return { ok: true, materialRequestId: input.materialRequestId, status: "FINALIZADA" };
   }
 }

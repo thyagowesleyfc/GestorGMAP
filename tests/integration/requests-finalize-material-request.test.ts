@@ -117,6 +117,12 @@ describe("finalize material request", () => {
       await expectFinalizedMaterialRequest(client, seed.materialRequestId, 4);
       await expectAuditEntries(client, 1);
       await expectIdempotencyRows(client, 1);
+      await expectOutboxEvents(client, {
+        materialRequestId: seed.materialRequestId,
+        shipmentCount: 2,
+        correlationId: "corr-finaliza-solicitacao-001",
+        expectedCount: 1
+      });
       await expectNoAdditionalLogisticsEffects(client, { shipmentCount: 2, deliveryCount: 2 });
     } finally {
       await pool.end().catch(() => undefined);
@@ -187,6 +193,7 @@ describe("finalize material request", () => {
         shipmentId: missingDelivery.shipmentIds[1]
       });
       await expectAuditEntries(client, 0);
+      await expectOutboxEventCount(client, 0);
     } finally {
       await pool.end().catch(() => undefined);
       await client.end().catch(() => undefined);
@@ -223,6 +230,7 @@ describe("finalize material request", () => {
       expect(result).toEqual({ ok: false, reason: "PATRIMONIAL_EFFECTS_PENDING" });
       await expectMaterialRequestStatus(client, seed.materialRequestId, "DESPACHADA", 3);
       await expectAuditEntries(client, 0);
+      await expectOutboxEventCount(client, 0);
     } finally {
       await pool.end().catch(() => undefined);
       await client.end().catch(() => undefined);
@@ -284,6 +292,70 @@ async function expectIdempotencyRows(client: Client, expectedCount: number): Pro
   );
 
   expect(idempotencyRows.rows).toEqual([{ count: expectedCount }]);
+}
+
+async function expectOutboxEvents(
+  client: Client,
+  input: {
+    materialRequestId: string;
+    shipmentCount: number;
+    correlationId: string;
+    expectedCount: number;
+  }
+): Promise<void> {
+  const events = await client.query<{
+    count: number;
+    event_type: string | null;
+    aggregate_type: string | null;
+    aggregate_id: string | null;
+    status: string | null;
+    attempts: number | null;
+    payload: {
+      materialRequestId?: string;
+      status?: string;
+      shipmentCount?: number;
+      correlationId?: string;
+    } | null;
+  }>(
+    `select count(*)::int as count,
+            min("event_type") as event_type,
+            min("aggregate_type") as aggregate_type,
+            min("aggregate_id") as aggregate_id,
+            min("status"::text) as status,
+            min("attempts")::int as attempts,
+            min("payload"::text)::jsonb as payload
+       from "outbox_event"
+      where "aggregate_id" = $1`,
+    [input.materialRequestId]
+  );
+
+  expect(events.rows).toEqual([
+    {
+      count: input.expectedCount,
+      event_type: input.expectedCount === 0 ? null : "requests.material_request_finalized",
+      aggregate_type: input.expectedCount === 0 ? null : "material_request",
+      aggregate_id: input.expectedCount === 0 ? null : input.materialRequestId,
+      status: input.expectedCount === 0 ? null : "PENDING",
+      attempts: input.expectedCount === 0 ? null : 0,
+      payload:
+        input.expectedCount === 0
+          ? null
+          : expect.objectContaining({
+              materialRequestId: input.materialRequestId,
+              status: "FINALIZADA",
+              shipmentCount: input.shipmentCount,
+              correlationId: input.correlationId
+            })
+    }
+  ]);
+}
+
+async function expectOutboxEventCount(client: Client, expectedCount: number): Promise<void> {
+  const events = await client.query<{ count: number }>(
+    `select count(*)::int as count from "outbox_event"`
+  );
+
+  expect(events.rows).toEqual([{ count: expectedCount }]);
 }
 
 async function expectNoAdditionalLogisticsEffects(
