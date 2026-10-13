@@ -2,6 +2,7 @@ import type { Pool } from "pg";
 
 import type { EmailSender } from "../email/email-sender";
 import { LogisticsDeliveryRegisteredEmailHandler } from "./logistics-delivery-registered-email-handler";
+import { LogisticsDeliveryRegisteredNotificationHandler } from "./logistics-delivery-registered-notification-handler";
 import { LogisticsRecollectionExecutedNotificationHandler } from "./logistics-recollection-executed-notification-handler";
 import { OutboxEventRouter } from "./outbox-event-router";
 import { ProcessOutboxEvents } from "./process-outbox-events";
@@ -21,13 +22,25 @@ export type LogisticsOutboxWorker = {
 export function createLogisticsOutboxWorker(
   input: CreateLogisticsOutboxWorkerInput
 ): LogisticsOutboxWorker {
+  const deliveryNotificationHandler = new LogisticsDeliveryRegisteredNotificationHandler(
+    input.pool,
+    {
+      targetTeamContext: input.managementTargetTeamContext
+    }
+  );
+  const deliveryEmailHandler = new LogisticsDeliveryRegisteredEmailHandler(input.emailSender, {
+    recipients: input.deliveryEmailRecipients
+  });
   const handler = new OutboxEventRouter([
     {
       eventType: "logistics.delivery_registered",
       aggregateType: "logistics_delivery",
-      handler: new LogisticsDeliveryRegisteredEmailHandler(input.emailSender, {
-        recipients: input.deliveryEmailRecipients
-      })
+      handler: {
+        handle: async (event) => {
+          await deliveryNotificationHandler.handle(event);
+          await deliveryEmailHandler.handle(event);
+        }
+      }
     },
     {
       eventType: "logistics.recollection_executed",

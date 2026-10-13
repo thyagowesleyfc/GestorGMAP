@@ -41,6 +41,17 @@ describe("create logistics outbox worker", () => {
       expect.objectContaining({
         values: expect.arrayContaining([
           "GERENCIA_MATERIAIS",
+          "Entrega registrada",
+          "logistics_delivery",
+          "delivery-1",
+          "corr-delivery-1"
+        ])
+      }),
+      expect.objectContaining({
+        values: expect.arrayContaining([
+          "GERENCIA_MATERIAIS",
+          "Recolha executada",
+          "logistics_recollection",
           "recollection-1",
           "corr-recollection-1"
         ])

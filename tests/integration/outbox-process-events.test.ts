@@ -231,11 +231,56 @@ describe("process outbox events", () => {
 
       expect(result).toEqual({ processed: 2, retried: 0, failed: 0 });
       expect(sentSubjects).toEqual(["Entrega registrada no GESTOR GMAP: TOTAL"]);
-      await expectInternalNotification(client, {
-        recollectionId,
-        targetTeamContext: "GERENCIA_MATERIAIS",
-        correlationId: `corr-${recollectionId}`
+      await expectInternalNotifications(client, [
+        {
+          title: "Entrega registrada",
+          body: `A entrega ${deliveryEvent} foi registrada com aceite TOTAL em 2026-09-25T13:00:00.000Z.`,
+          relatedType: "logistics_delivery",
+          relatedId: deliveryEvent,
+          targetTeamContext: "GERENCIA_MATERIAIS",
+          correlationId: `corr-${deliveryEvent}`
+        },
+        {
+          title: "Recolha executada",
+          body: `A recolha ${recollectionId} foi executada em 2026-09-25T20:20:00.000Z.`,
+          relatedType: "logistics_recollection",
+          relatedId: recollectionId,
+          targetTeamContext: "GERENCIA_MATERIAIS",
+          correlationId: `corr-${recollectionId}`
+        }
+      ]);
+      await worker.handler.handle({
+        id: deliveryEvent,
+        eventType: "logistics.delivery_registered",
+        aggregateType: "logistics_delivery",
+        aggregateId: deliveryEvent,
+        payload: {
+          deliveryId: deliveryEvent,
+          shipmentId: "shipment-" + deliveryEvent,
+          acceptanceStatus: "TOTAL",
+          deliveredAt: "2026-09-25T13:00:00.000Z",
+          correlationId: `corr-${deliveryEvent}`
+        },
+        attempts: 1
       });
+      await expectInternalNotifications(client, [
+        {
+          title: "Entrega registrada",
+          body: `A entrega ${deliveryEvent} foi registrada com aceite TOTAL em 2026-09-25T13:00:00.000Z.`,
+          relatedType: "logistics_delivery",
+          relatedId: deliveryEvent,
+          targetTeamContext: "GERENCIA_MATERIAIS",
+          correlationId: `corr-${deliveryEvent}`
+        },
+        {
+          title: "Recolha executada",
+          body: `A recolha ${recollectionId} foi executada em 2026-09-25T20:20:00.000Z.`,
+          relatedType: "logistics_recollection",
+          relatedId: recollectionId,
+          targetTeamContext: "GERENCIA_MATERIAIS",
+          correlationId: `corr-${recollectionId}`
+        }
+      ]);
       await expectOutboxState(client, deliveryEvent, {
         status: "PROCESSED",
         attempts: 0,
@@ -249,6 +294,53 @@ describe("process outbox events", () => {
         processedAt: now,
         nextAttemptAt: null,
         lastError: null
+      });
+    } finally {
+      await pool.end().catch(() => undefined);
+      await client.end().catch(() => undefined);
+      await postgres.stop();
+    }
+  });
+  it("retries delivery registered events with invalid notification payload", async () => {
+    const postgres = await new PostgreSqlContainer("postgres:17-alpine").start();
+    const client = new Client({ connectionString: postgres.getConnectionUri() });
+    const pool = new Pool({ connectionString: postgres.getConnectionUri(), max: 4 });
+
+    try {
+      await runPrismaMigrateDeploy(postgres.getConnectionUri());
+      await client.connect();
+
+      const now = new Date("2026-09-25T21:00:00.000Z");
+      const deliveryEvent = await insertOutboxEvent(client, {
+        createdAt: now,
+        payloadOverride: { acceptanceStatus: "PENDENTE" }
+      });
+      const sender: EmailSender = {
+        send: async () => {
+          throw new Error("e-mail nao deveria ser enviado");
+        }
+      };
+      const worker = createLogisticsOutboxWorker({
+        pool,
+        emailSender: sender,
+        deliveryEmailRecipients: ["gmap-logistica@example.test"],
+        managementTargetTeamContext: "GERENCIA_MATERIAIS"
+      });
+
+      const result = await worker.processor.processBatch({
+        batchSize: 1,
+        now,
+        retryPolicy: { maxAttempts: 3, backoffMs: () => 60_000 }
+      });
+
+      expect(result).toEqual({ processed: 0, retried: 1, failed: 0 });
+      await expectInternalNotificationCount(client, 0);
+      await expectOutboxState(client, deliveryEvent, {
+        status: "PENDING",
+        attempts: 1,
+        processedAt: null,
+        nextAttemptAt: new Date("2026-09-25T21:01:00.000Z"),
+        lastError: "Payload de entrega registrada incompleto."
       });
     } finally {
       await pool.end().catch(() => undefined);
@@ -306,9 +398,18 @@ async function insertOutboxEvent(
     attempts?: number;
     createdAt?: Date;
     nextAttemptAt?: Date;
+    payloadOverride?: Record<string, unknown>;
   }
 ): Promise<string> {
   const id = randomUUID();
+  const payload = {
+    deliveryId: id,
+    shipmentId: "shipment-" + id,
+    acceptanceStatus: "TOTAL",
+    deliveredAt: "2026-09-25T13:00:00.000Z",
+    correlationId: "corr-" + id,
+    ...input.payloadOverride
+  };
 
   await client.query(
     `insert into "outbox_event" (
@@ -318,14 +419,8 @@ async function insertOutboxEvent(
       id,
       "logistics.delivery_registered",
       "logistics_delivery",
-      randomUUID(),
-      JSON.stringify({
-        deliveryId: id,
-        shipmentId: "shipment-" + id,
-        acceptanceStatus: "TOTAL",
-        deliveredAt: "2026-09-25T13:00:00.000Z",
-        correlationId: "corr-" + id
-      }),
+      id,
+      JSON.stringify(payload),
       input.attempts ?? 0,
       input.createdAt ?? new Date("2026-09-25T15:00:00.000Z"),
       input.nextAttemptAt ?? null
@@ -366,13 +461,16 @@ async function insertRecollectionExecutedEvent(
   return id;
 }
 
-async function expectInternalNotification(
+async function expectInternalNotifications(
   client: Client,
-  input: {
-    recollectionId: string;
+  expected: {
+    title: string;
+    body: string;
+    relatedType: string;
+    relatedId: string;
     targetTeamContext: string;
     correlationId: string;
-  }
+  }[]
 ): Promise<void> {
   const notifications = await client.query<{
     target_type: string;
@@ -392,21 +490,38 @@ async function expectInternalNotification(
             "related_type",
             "related_id",
             "correlation_id"
-       from "internal_notification"`
+       from "internal_notification"
+      order by "title", "related_id"`
   );
 
-  expect(notifications.rows).toEqual([
-    {
-      target_type: "GERENCIA",
-      target_team_context: input.targetTeamContext,
-      status: "CRIADA",
-      title: "Recolha executada",
-      body: `A recolha ${input.recollectionId} foi executada em 2026-09-25T20:20:00.000Z.`,
-      related_type: "logistics_recollection",
-      related_id: input.recollectionId,
-      correlation_id: input.correlationId
-    }
-  ]);
+  expect(notifications.rows).toEqual(
+    expected
+      .map((notification) => ({
+        target_type: "GERENCIA",
+        target_team_context: notification.targetTeamContext,
+        status: "CRIADA",
+        title: notification.title,
+        body: notification.body,
+        related_type: notification.relatedType,
+        related_id: notification.relatedId,
+        correlation_id: notification.correlationId
+      }))
+      .sort((left, right) => {
+        const byTitle = left.title.localeCompare(right.title);
+        return byTitle === 0 ? left.related_id.localeCompare(right.related_id) : byTitle;
+      })
+  );
+}
+
+async function expectInternalNotificationCount(
+  client: Client,
+  expectedCount: number
+): Promise<void> {
+  const notifications = await client.query<{ count: number }>(
+    `select count(*)::int as count from "internal_notification"`
+  );
+
+  expect(notifications.rows).toEqual([{ count: expectedCount }]);
 }
 async function expectOutboxState(
   client: Client,
