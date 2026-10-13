@@ -8,6 +8,8 @@ A base de processamento da Outbox existe como um processador de lote reutilizave
 
 `runLogisticsOutboxBatch` executa um unico lote configurado, sem loop continuo.
 
+`runLogisticsOutboxLoop` executa lotes repetidamente ate um `AbortSignal` ser abortado. Ele nao implementa retry local para falhas de infraestrutura: erros do processador propagam para o processo supervisor, enquanto retry/FAILED de eventos continua sendo responsabilidade da politica da Outbox. O comando `npm run worker:logistics:outbox:loop` inicia esse processo continuo e encerra limpo com `SIGINT`/`SIGTERM`.
+
 `createConfiguredLogisticsOutboxWorker` monta a composicao operacional de lote unico a partir do ambiente: cria o `Pool` PostgreSQL, instancia `SmtpEmailSender`, monta `createLogisticsOutboxWorker` e expoe `close()` para encerrar conexoes.
 
 `runConfiguredLogisticsOutboxBatch` executa um lote com essa composicao configurada e sempre chama `close()` ao final, inclusive em falhas de processamento. O comando `npm run worker:logistics:outbox:batch` dispara exatamente um lote e retorna codigo 1 somente quando a execucao do worker falha.
@@ -39,4 +41,4 @@ Eventos cobertos nesta base:
 - `logistics.recollection_executed`: cria notificacao interna para a Gerencia.
 - `requests.material_request_finalized`: cria notificacao interna para ciencia da Gerencia.
 
-Ainda nao ha loop de processo/container dedicado. Essa integracao operacional deve ser adicionada em incremento proprio para executar lotes continuamente ou via scheduler.
+Ainda nao ha processo/container dedicado nem scheduler externo. Essa integracao operacional deve ser adicionada em incremento proprio para execucao supervisionada em DEV/HML/PROD.

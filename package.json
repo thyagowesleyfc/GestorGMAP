@@ -15,6 +15,7 @@
     "db:ps": "docker compose ps postgres",
     "bootstrap:superuser": "node scripts/bootstrap-technical-superuser.mjs",
     "worker:logistics:outbox:batch": "tsx scripts/run-logistics-outbox-batch.ts",
+    "worker:logistics:outbox:loop": "tsx scripts/run-logistics-outbox-loop.ts",
     "db:up": "docker compose up -d postgres",
     "format": "prettier . --write",
     "format:check": "prettier . --check",
