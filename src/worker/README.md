@@ -21,6 +21,18 @@ A base de processamento da Outbox existe como um processador de lote reutilizave
 
 `SmtpEmailSender` implementa a porta `EmailSender` com `nodemailer` e recebe a configuracao por `GMAP_SMTP_*`. Usuario e senha SMTP sao opcionais, mas devem ser informados em conjunto quando houver autenticacao.
 
+Variaveis locais esperadas para o e-mail:
+
+- `DATABASE_URL`: obrigatoria.
+- `GMAP_OUTBOX_DELIVERY_EMAIL_RECIPIENTS`: obrigatoria; lista separada por virgula, com ao menos um e-mail.
+- `GMAP_OUTBOX_MANAGEMENT_TARGET_TEAM_CONTEXT`: obrigatoria; identifica o contexto de Time/Gerencia das notificacoes.
+- `GMAP_OUTBOX_BATCH_SIZE`: opcional; padrao `10`; inteiro entre `1` e `100`.
+- `GMAP_SMTP_HOST`: obrigatoria.
+- `GMAP_SMTP_PORT`: obrigatoria; inteiro entre `1` e `65535`.
+- `GMAP_SMTP_SECURE`: opcional; padrao `false`; aceita `true` ou `false`.
+- `GMAP_SMTP_FROM`: obrigatoria.
+- `GMAP_SMTP_USERNAME` e `GMAP_SMTP_PASSWORD`: opcionais, mas sempre em conjunto; senha SMTP e URL de banco de producao nao devem ser versionadas.
+
 Eventos cobertos nesta base:
 
 - `logistics.delivery_registered`: cria notificacao interna para a Gerencia e monta/envia mensagem por uma porta `EmailSender`.
