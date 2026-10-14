@@ -968,6 +968,7 @@ model LogisticsShipmentItem {
   shipment          LogisticsShipment @relation(fields: [shipmentId], references: [id], onDelete: Restrict)
   stockPosition     StockPosition     @relation(fields: [stockPositionId], references: [id], onDelete: Restrict)
   stockSeparation   StockSeparation   @relation(fields: [stockSeparationId, stockPositionId], references: [id, stockPositionId], onDelete: Restrict)
+  sourcePatrimonies Patrimony[]
 
   @@unique([shipmentId, lineNumber], map: "logistics_shipment_item_shipment_line_key")
   @@unique([shipmentId, stockSeparationId], map: "logistics_shipment_item_shipment_separation_key")
@@ -978,17 +979,18 @@ model LogisticsShipmentItem {
 }
 
 model LogisticsDelivery {
-  id               String                            @id @default(uuid()) @db.Uuid
-  code             String                            @unique @db.VarChar(80)
-  shipmentId       String                            @unique @map("shipment_id") @db.Uuid
-  acceptanceStatus LogisticsDeliveryAcceptanceStatus @map("acceptance_status")
-  deliveredAt      DateTime                          @map("delivered_at")
-  summary          String                            @db.VarChar(500)
-  version          Int                               @default(1)
-  createdAt        DateTime                          @default(now()) @map("created_at")
-  updatedAt        DateTime                          @updatedAt @map("updated_at")
-  shipment         LogisticsShipment                 @relation(fields: [shipmentId], references: [id], onDelete: Restrict)
-  documents        LogisticsDeliveryDocument[]
+  id                String                            @id @default(uuid()) @db.Uuid
+  code              String                            @unique @db.VarChar(80)
+  shipmentId        String                            @unique @map("shipment_id") @db.Uuid
+  acceptanceStatus  LogisticsDeliveryAcceptanceStatus @map("acceptance_status")
+  deliveredAt       DateTime                          @map("delivered_at")
+  summary           String                            @db.VarChar(500)
+  version           Int                               @default(1)
+  createdAt         DateTime                          @default(now()) @map("created_at")
+  updatedAt         DateTime                          @updatedAt @map("updated_at")
+  shipment          LogisticsShipment                 @relation(fields: [shipmentId], references: [id], onDelete: Restrict)
+  documents         LogisticsDeliveryDocument[]
+  sourcePatrimonies Patrimony[]
 
   @@index([shipmentId])
   @@index([acceptanceStatus])
@@ -1054,18 +1056,26 @@ model LogisticsRecollection {
 }
 
 model Patrimony {
-  id                  String           @id @default(uuid()) @db.Uuid
-  materialSingularId  String           @map("material_singular_id") @db.Uuid
-  responsibleEntityId String           @map("responsible_entity_id") @db.Uuid
-  version             Int              @default(1)
-  createdAt           DateTime         @default(now()) @map("created_at")
-  updatedAt           DateTime         @updatedAt @map("updated_at")
-  materialSingular    MaterialSingular @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
-  responsibleEntity   Entity           @relation(fields: [responsibleEntityId], references: [id], onDelete: Restrict)
-  tombos              PatrimonyTombo[]
+  id                   String                 @id @default(uuid()) @db.Uuid
+  materialSingularId   String                 @map("material_singular_id") @db.Uuid
+  responsibleEntityId  String                 @map("responsible_entity_id") @db.Uuid
+  sourceDeliveryId     String?                @map("source_delivery_id") @db.Uuid
+  sourceShipmentItemId String?                @map("source_shipment_item_id") @db.Uuid
+  incorporatedAt       DateTime?              @map("incorporated_at")
+  version              Int                    @default(1)
+  createdAt            DateTime               @default(now()) @map("created_at")
+  updatedAt            DateTime               @updatedAt @map("updated_at")
+  materialSingular     MaterialSingular       @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
+  responsibleEntity    Entity                 @relation(fields: [responsibleEntityId], references: [id], onDelete: Restrict)
+  sourceDelivery       LogisticsDelivery?     @relation(fields: [sourceDeliveryId], references: [id], onDelete: Restrict)
+  sourceShipmentItem   LogisticsShipmentItem? @relation(fields: [sourceShipmentItemId], references: [id], onDelete: Restrict)
+  tombos               PatrimonyTombo[]
 
   @@index([materialSingularId])
   @@index([responsibleEntityId])
+  @@index([sourceDeliveryId])
+  @@index([sourceShipmentItemId])
+  @@index([incorporatedAt])
   @@map("patrimony")
 }
 

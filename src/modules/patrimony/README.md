@@ -14,6 +14,9 @@ Incremento inicial da Fase 6:
   `infrastructure/postgres-tombo-sequence-allocator.ts`: alocacao transacional do
   proximo Tombo no padrao `011-GRUPO-SEQUENCIA`, em que `011` e o COD fixo da
   SEDUC/GMAP e `GRUPO` e o grupo patrimonial numerico (`01`, `02`, `03`...).
+- campos `source_delivery_id`, `source_shipment_item_id` e `incorporated_at` em
+  `patrimony`: base para rastrear a Entrega e o item de Expedicao que originaram
+  a incorporacao patrimonial.
 
 O alocador de sequencia garante unicidade e ordem sob concorrencia, mas nao e um Command
 idempotente isolado. Commands futuros de incorporacao/retombamento devem chamar a alocacao
