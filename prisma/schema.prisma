@@ -1089,6 +1089,17 @@ model PatrimonyTombo {
   @@map("patrimony_tombo")
 }
 
+model PatrimonyTomboSequence {
+  id                   String   @id @default(uuid()) @db.Uuid
+  patrimonialGroupCode String   @map("patrimonial_group_code") @db.VarChar(64)
+  currentValue         Int      @default(0) @map("current_value")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @updatedAt @map("updated_at")
+
+  @@unique([patrimonialGroupCode], map: "patrimony_tombo_sequence_group_key")
+  @@map("patrimony_tombo_sequence")
+}
+
 model InternalNotification {
   id                String                         @id @default(uuid()) @db.Uuid
   targetType        InternalNotificationTargetType @map("target_type")

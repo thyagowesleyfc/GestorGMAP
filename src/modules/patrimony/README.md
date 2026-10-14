@@ -10,6 +10,13 @@ Incremento inicial da Fase 6:
   pertencem a persistencia e Commands futuros.
 - `patrimony` e `patrimony_tombo`: base persistente para identidade interna estavel,
   Tombo unico, Tombo ativo por patrimonio e historico que impede reutilizacao.
+- `application/allocate-tombo-sequence.ts` e
+  `infrastructure/postgres-tombo-sequence-allocator.ts`: alocacao transacional do
+  proximo Tombo no padrao `011-GRUPO-SEQUENCIA`, em que `011` e o COD fixo da
+  SEDUC/GMAP e `GRUPO` e o grupo patrimonial numerico (`01`, `02`, `03`...).
 
-Ainda nao ha geracao de sequencia, incorporacao, retombamento, movimentacoes ou APIs neste
-contexto.
+O alocador de sequencia garante unicidade e ordem sob concorrencia, mas nao e um Command
+idempotente isolado. Commands futuros de incorporacao/retombamento devem chamar a alocacao
+na mesma transacao idempotente do efeito patrimonial para evitar consumo repetido em retry.
+
+Ainda nao ha incorporacao, retombamento, movimentacoes ou APIs neste contexto.
