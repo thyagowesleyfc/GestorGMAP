@@ -141,13 +141,10 @@ describe("logistics recollection migration", () => {
         summary: "Recolha executada pela logistica"
       });
 
-      const patrimonyTables = await client.query<{ count: number }>(
-        `select count(*)::int as count
-           from information_schema.tables
-          where table_schema = 'public'
-            and table_name in ('patrimony', 'patrimony_movement', 'patrimony_recollection')`
+      const patrimonies = await client.query<{ count: number }>(
+        `select count(*)::int as count from "patrimony"`
       );
-      expect(patrimonyTables.rows).toEqual([{ count: 0 }]);
+      expect(patrimonies.rows).toEqual([{ count: 0 }]);
 
       await expect(
         insertRecollection(client, {

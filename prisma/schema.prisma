@@ -183,6 +183,11 @@ enum LogisticsDeliveryAcceptanceStatus {
   RECUSADO
 }
 
+enum PatrimonyTomboStatus {
+  ATIVO
+  ENCERRADO
+}
+
 model Person {
   id          String        @id @default(uuid()) @db.Uuid
   displayName String        @map("display_name") @db.VarChar(160)
@@ -342,6 +347,7 @@ model Entity {
   childEntities                   Entity[]                @relation("EntityHierarchy")
   receivingEntries                ReceivingEntry[]
   stockPositions                  StockPosition[]
+  patrimonies                     Patrimony[]
   MaterialRequest                 MaterialRequest[]
   logisticsShipments              LogisticsShipment[]
   logisticsRecollectionsRequested LogisticsRecollection[] @relation("LogisticsRecollectionRequestingEntity")
@@ -387,6 +393,7 @@ model MaterialSingular {
   receivingEntryItems         ReceivingEntryItem[]
   materialRequestItems        MaterialRequestItem[]
   stockPositions              StockPosition[]
+  patrimonies                 Patrimony[]
 
   @@index([classId])
   @@index([controlType])
@@ -1044,6 +1051,42 @@ model LogisticsRecollection {
   @@index([authorizedAt])
   @@index([executedAt])
   @@map("logistics_recollection")
+}
+
+model Patrimony {
+  id                  String           @id @default(uuid()) @db.Uuid
+  materialSingularId  String           @map("material_singular_id") @db.Uuid
+  responsibleEntityId String           @map("responsible_entity_id") @db.Uuid
+  version             Int              @default(1)
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+  materialSingular    MaterialSingular @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
+  responsibleEntity   Entity           @relation(fields: [responsibleEntityId], references: [id], onDelete: Restrict)
+  tombos              PatrimonyTombo[]
+
+  @@index([materialSingularId])
+  @@index([responsibleEntityId])
+  @@map("patrimony")
+}
+
+model PatrimonyTombo {
+  id                   String               @id @default(uuid()) @db.Uuid
+  patrimonyId          String               @map("patrimony_id") @db.Uuid
+  tombo                String               @unique @db.VarChar(64)
+  patrimonialGroupCode String               @map("patrimonial_group_code") @db.VarChar(64)
+  status               PatrimonyTomboStatus @default(ATIVO)
+  issuedAt             DateTime             @map("issued_at")
+  retiredAt            DateTime?            @map("retired_at")
+  retirementReason     String?              @map("retirement_reason") @db.VarChar(500)
+  createdAt            DateTime             @default(now()) @map("created_at")
+  updatedAt            DateTime             @updatedAt @map("updated_at")
+  patrimony            Patrimony            @relation(fields: [patrimonyId], references: [id], onDelete: Restrict)
+
+  @@index([patrimonyId])
+  @@index([status])
+  @@index([issuedAt])
+  @@index([retiredAt])
+  @@map("patrimony_tombo")
 }
 
 model InternalNotification {

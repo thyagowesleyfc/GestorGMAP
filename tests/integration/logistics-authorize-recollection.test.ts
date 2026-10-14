@@ -369,17 +369,14 @@ async function expectNoExecutionOrPatrimonyEffects(client: Client): Promise<void
   const shipments = await client.query<{ count: number }>(
     `select count(*)::int as count from "logistics_shipment"`
   );
-  const patrimonyTables = await client.query<{ count: number }>(
-    `select count(*)::int as count
-       from information_schema.tables
-      where table_schema = 'public'
-        and table_name in ('patrimony', 'patrimony_movement', 'patrimony_recollection')`
+  const patrimonies = await client.query<{ count: number }>(
+    `select count(*)::int as count from "patrimony"`
   );
 
   expect(executed.rows).toEqual([{ count: 0 }]);
   expect(deliveries.rows).toEqual([{ count: 0 }]);
   expect(shipments.rows).toEqual([{ count: 0 }]);
-  expect(patrimonyTables.rows).toEqual([{ count: 0 }]);
+  expect(patrimonies.rows).toEqual([{ count: 0 }]);
 }
 
 type RecollectionSeed = {
