@@ -17,9 +17,13 @@ Incremento inicial da Fase 6:
 - campos `source_delivery_id`, `source_shipment_item_id` e `incorporated_at` em
   `patrimony`: base para rastrear a Entrega e o item de Expedicao que originaram
   a incorporacao patrimonial.
+- `application/incorporate-patrimony-from-delivery.ts` e
+  `infrastructure/postgres-patrimony-incorporator.ts`: incorporacao atomica de
+  Entregas `TOTAL` com Material Singular tombavel; `PARCIAL` e configuracoes
+  permanecem explicitamente pendentes.
 
 O alocador de sequencia garante unicidade e ordem sob concorrencia, mas nao e um Command
-idempotente isolado. Commands futuros de incorporacao/retombamento devem chamar a alocacao
+idempotente isolado. Commands de incorporacao e futuros Commands de retombamento devem chamar a alocacao
 na mesma transacao idempotente do efeito patrimonial para evitar consumo repetido em retry.
 
-Ainda nao ha incorporacao, retombamento, movimentacoes ou APIs neste contexto.
+Ainda nao ha retombamento, movimentacoes ou APIs neste contexto.
