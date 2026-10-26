@@ -20,7 +20,10 @@ Incremento inicial da Fase 6:
 - `application/incorporate-patrimony-from-delivery.ts` e
   `infrastructure/postgres-patrimony-incorporator.ts`: incorporacao atomica de
   Entregas `TOTAL` com Material Singular tombavel; `PARCIAL` e configuracoes
-  permanecem explicitamente pendentes.
+  permanecem explicitamente pendentes de incorporacao.
+- `patrimony_composition` e `patrimony_composition_item`: fundacao versionada
+  para snapshots de configuracoes e componentes; o Command de composicao ainda
+  nao foi implementado.
 
 O alocador de sequencia garante unicidade e ordem sob concorrencia, mas nao e um Command
 idempotente isolado. Commands de incorporacao e futuros Commands de retombamento devem chamar a alocacao
