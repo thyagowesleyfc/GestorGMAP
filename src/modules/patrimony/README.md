@@ -33,8 +33,12 @@ Incremento inicial da Fase 6:
   `infrastructure/postgres-patrimony-composition-history-reader.ts`: Query
   paginada do historico de composicao, com escopo por Membership, campos minimos
   e carregamento dos itens em lote sem N+1.
-- A criacao de Patrimonios a partir de Kits/Entregas `PARCIAL`, retombamento,
-  movimentacoes e APIs de composicao continuam pendentes.
+- `application/retombar-patrimony.ts` e
+  `infrastructure/postgres-patrimony-retomber.ts`: retombamento atomico do mesmo
+  Patrimonio, encerrando o Tombo anterior, alocando novo Tombo na sequencia do
+  mesmo grupo e mantendo auditoria, Outbox e idempotencia.
+- A criacao de Patrimonios a partir de Kits/Entregas `PARCIAL`, movimentacoes e
+  APIs de composicao continuam pendentes.
 
 O alocador de sequencia garante unicidade e ordem sob concorrencia, mas nao e um Command
 idempotente isolado. Commands de incorporacao e futuros Commands de retombamento devem chamar a alocacao
