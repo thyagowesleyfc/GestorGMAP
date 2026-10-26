@@ -1,0 +1,1 @@
+ALTER TYPE "PatrimonyMovementType" ADD VALUE 'EMPRESTIMO';

@@ -133,6 +133,7 @@ enum StockMovementType {
 
 enum PatrimonyMovementType {
   REMANEJAMENTO
+  EMPRESTIMO
 }
 
 enum StockReservationStatus {
