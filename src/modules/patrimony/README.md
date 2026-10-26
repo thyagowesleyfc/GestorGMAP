@@ -41,11 +41,17 @@ Incremento inicial da Fase 6:
   `infrastructure/postgres-patrimony-retifier.ts`: retificacao do Material
   Singular do mesmo Patrimonio, sem alterar Entidade, Tombo ou snapshots, com
   validacao de compatibilidade, auditoria, Outbox e idempotencia.
-- A criacao de Patrimonios a partir de Kits/Entregas `PARCIAL`, movimentacoes e
-  APIs de composicao continuam pendentes.
+- `application/remanejar-patrimony.ts` e
+  `infrastructure/postgres-patrimony-remanejador.ts`: remanejamento atomico
+  entre Entidades, preservando Patrimonio/Tombo e registrando ledger de
+  movimento, auditoria, Outbox e idempotencia. Patrimonios envolvidos em
+  composicao concreta permanecem bloqueados neste incremento.
+- A criacao de Patrimonios a partir de Kits/Entregas `PARCIAL`, Emprestimo,
+  Recolha, Baixa e APIs de composicao continuam pendentes.
 
 O alocador de sequencia garante unicidade e ordem sob concorrencia, mas nao e um Command
 idempotente isolado. Commands de incorporacao e futuros Commands de retombamento devem chamar a alocacao
 na mesma transacao idempotente do efeito patrimonial para evitar consumo repetido em retry.
 
-Ainda nao ha movimentacoes ou APIs neste contexto.
+Ainda nao ha APIs neste contexto. O unico movimento implementado nesta etapa e
+o Remanejamento de Patrimonio sem composicao concreta.

@@ -131,6 +131,10 @@ enum StockMovementType {
   ENTRADA_RECEBIMENTO
 }
 
+enum PatrimonyMovementType {
+  REMANEJAMENTO
+}
+
 enum StockReservationStatus {
   ATIVA
 }
@@ -348,6 +352,8 @@ model Entity {
   receivingEntries                ReceivingEntry[]
   stockPositions                  StockPosition[]
   patrimonies                     Patrimony[]
+  patrimonyMovementsFrom          PatrimonyMovement[]     @relation("PatrimonyMovementFromEntity")
+  patrimonyMovementsTo            PatrimonyMovement[]     @relation("PatrimonyMovementToEntity")
   MaterialRequest                 MaterialRequest[]
   logisticsShipments              LogisticsShipment[]
   logisticsRecollectionsRequested LogisticsRecollection[] @relation("LogisticsRecollectionRequestingEntity")
@@ -1074,6 +1080,7 @@ model Patrimony {
   tombos                      PatrimonyTombo[]
   compositions                PatrimonyComposition[]
   compositionItemsAsComponent PatrimonyCompositionItem[] @relation("PatrimonyCompositionComponent")
+  movements                   PatrimonyMovement[]
 
   @@index([materialSingularId])
   @@index([responsibleEntityId])
@@ -1081,6 +1088,26 @@ model Patrimony {
   @@index([sourceShipmentItemId])
   @@index([incorporatedAt])
   @@map("patrimony")
+}
+
+model PatrimonyMovement {
+  id            String                @id @default(uuid()) @db.Uuid
+  patrimonyId   String                @map("patrimony_id") @db.Uuid
+  movementType  PatrimonyMovementType @map("movement_type")
+  fromEntityId  String                @map("from_entity_id") @db.Uuid
+  toEntityId    String                @map("to_entity_id") @db.Uuid
+  occurredAt    DateTime              @map("occurred_at")
+  reason        String                @db.VarChar(500)
+  correlationId String                @map("correlation_id") @db.VarChar(160)
+  createdAt     DateTime              @default(now()) @map("created_at")
+  patrimony     Patrimony             @relation(fields: [patrimonyId], references: [id], onDelete: Restrict)
+  fromEntity    Entity                @relation("PatrimonyMovementFromEntity", fields: [fromEntityId], references: [id], onDelete: Restrict)
+  toEntity      Entity                @relation("PatrimonyMovementToEntity", fields: [toEntityId], references: [id], onDelete: Restrict)
+
+  @@index([patrimonyId, occurredAt])
+  @@index([fromEntityId, occurredAt])
+  @@index([toEntityId, occurredAt])
+  @@map("patrimony_movement")
 }
 
 model PatrimonyComposition {
