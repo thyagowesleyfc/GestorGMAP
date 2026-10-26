@@ -134,6 +134,7 @@ enum StockMovementType {
 enum PatrimonyMovementType {
   REMANEJAMENTO
   EMPRESTIMO
+  RECOLHA
 }
 
 enum StockReservationStatus {
@@ -1053,6 +1054,7 @@ model LogisticsRecollection {
   requestingEntity   Entity                      @relation("LogisticsRecollectionRequestingEntity", fields: [requestingEntityId], references: [id], onDelete: Restrict)
   receivingEntity    Entity                      @relation("LogisticsRecollectionReceivingEntity", fields: [receivingEntityId], references: [id], onDelete: Restrict)
   requestedByUser    UserAccount?                @relation(fields: [requestedByUserId], references: [id], onDelete: Restrict)
+  patrimonyMovements PatrimonyMovement[]
 
   @@index([requestingEntityId])
   @@index([receivingEntityId])
@@ -1092,22 +1094,26 @@ model Patrimony {
 }
 
 model PatrimonyMovement {
-  id            String                @id @default(uuid()) @db.Uuid
-  patrimonyId   String                @map("patrimony_id") @db.Uuid
-  movementType  PatrimonyMovementType @map("movement_type")
-  fromEntityId  String                @map("from_entity_id") @db.Uuid
-  toEntityId    String                @map("to_entity_id") @db.Uuid
-  occurredAt    DateTime              @map("occurred_at")
-  reason        String                @db.VarChar(500)
-  correlationId String                @map("correlation_id") @db.VarChar(160)
-  createdAt     DateTime              @default(now()) @map("created_at")
-  patrimony     Patrimony             @relation(fields: [patrimonyId], references: [id], onDelete: Restrict)
-  fromEntity    Entity                @relation("PatrimonyMovementFromEntity", fields: [fromEntityId], references: [id], onDelete: Restrict)
-  toEntity      Entity                @relation("PatrimonyMovementToEntity", fields: [toEntityId], references: [id], onDelete: Restrict)
+  id                      String                 @id @default(uuid()) @db.Uuid
+  patrimonyId             String                 @map("patrimony_id") @db.Uuid
+  movementType            PatrimonyMovementType  @map("movement_type")
+  fromEntityId            String                 @map("from_entity_id") @db.Uuid
+  toEntityId              String                 @map("to_entity_id") @db.Uuid
+  logisticsRecollectionId String?                @map("logistics_recollection_id") @db.Uuid
+  occurredAt              DateTime               @map("occurred_at")
+  reason                  String                 @db.VarChar(500)
+  correlationId           String                 @map("correlation_id") @db.VarChar(160)
+  createdAt               DateTime               @default(now()) @map("created_at")
+  patrimony               Patrimony              @relation(fields: [patrimonyId], references: [id], onDelete: Restrict)
+  fromEntity              Entity                 @relation("PatrimonyMovementFromEntity", fields: [fromEntityId], references: [id], onDelete: Restrict)
+  toEntity                Entity                 @relation("PatrimonyMovementToEntity", fields: [toEntityId], references: [id], onDelete: Restrict)
+  logisticsRecollection   LogisticsRecollection? @relation(fields: [logisticsRecollectionId], references: [id], onDelete: Restrict)
 
+  @@unique([patrimonyId, logisticsRecollectionId], map: "patrimony_movement_patrimony_recollection_key")
   @@index([patrimonyId, occurredAt])
   @@index([fromEntityId, occurredAt])
   @@index([toEntityId, occurredAt])
+  @@index([logisticsRecollectionId])
   @@map("patrimony_movement")
 }
 

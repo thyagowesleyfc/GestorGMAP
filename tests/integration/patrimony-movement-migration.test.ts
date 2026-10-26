@@ -42,7 +42,11 @@ describe("patrimony movement migration", () => {
           where enumtypid = '"PatrimonyMovementType"'::regtype
           order by enumlabel`
       );
-      expect(enumValues.rows.map((row) => row.enumlabel)).toEqual(["EMPRESTIMO", "REMANEJAMENTO"]);
+      expect(enumValues.rows.map((row) => row.enumlabel)).toEqual([
+        "EMPRESTIMO",
+        "RECOLHA",
+        "REMANEJAMENTO"
+      ]);
 
       const constraints = await client.query<{ conname: string }>(
         `select conname
@@ -75,7 +79,9 @@ describe("patrimony movement migration", () => {
       );
       expect(indexes.rows.map((row) => row.indexname)).toEqual([
         "patrimony_movement_from_entity_occurred_at_idx",
+        "patrimony_movement_logistics_recollection_id_idx",
         "patrimony_movement_patrimony_occurred_at_idx",
+        "patrimony_movement_patrimony_recollection_key",
         "patrimony_movement_pkey",
         "patrimony_movement_to_entity_occurred_at_idx"
       ]);

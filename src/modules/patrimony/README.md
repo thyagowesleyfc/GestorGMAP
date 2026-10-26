@@ -52,12 +52,18 @@ Incremento inicial da Fase 6:
   responsabilidade operacional, sem alterar Patrimonio/Tombo; o movimento
   tipado, auditoria, Outbox e idempotencia sao registrados. A devolucao do
   Emprestimo permanece fora deste recorte.
-- A criacao de Patrimonios a partir de Kits/Entregas `PARCIAL`, Recolha, Baixa
-  e APIs de composicao continuam pendentes.
+- `application/recolher-patrimony.ts` e
+  `infrastructure/postgres-patrimony-recolhedor.ts`: efeito patrimonial da
+  Recolha somente apos a LogisticsRecollection estar `EXECUTADA`, vinculando
+  a origem/destino resolvidos, preservando Patrimonio/Tombo e registrando
+  movimento, auditoria, Outbox e idempotencia. Devolucao e Baixa continuam
+  pendentes.
+- A criacao de Patrimonios a partir de Kits/Entregas `PARCIAL`, Baixa e APIs
+  de composicao continuam pendentes.
 
 O alocador de sequencia garante unicidade e ordem sob concorrencia, mas nao e um Command
 idempotente isolado. Commands de incorporacao e futuros Commands de retombamento devem chamar a alocacao
 na mesma transacao idempotente do efeito patrimonial para evitar consumo repetido em retry.
 
 Ainda nao ha APIs neste contexto. Os movimentos implementados nesta etapa sao
-Remanejamento e Emprestimo de Patrimonio sem composicao concreta.
+Remanejamento, Emprestimo e Recolha de Patrimonio sem composicao concreta.

@@ -35,7 +35,11 @@ describe("patrimony loan movement migration", () => {
           order by e.enumsortorder`
       );
 
-      expect(enumValues.rows.map((row) => row.enumlabel)).toEqual(["REMANEJAMENTO", "EMPRESTIMO"]);
+      expect(enumValues.rows.map((row) => row.enumlabel)).toEqual([
+        "REMANEJAMENTO",
+        "EMPRESTIMO",
+        "RECOLHA"
+      ]);
     } finally {
       await client.end().catch(() => undefined);
       await postgres.stop();
