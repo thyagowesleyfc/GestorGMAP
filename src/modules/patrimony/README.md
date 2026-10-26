@@ -29,6 +29,10 @@ Incremento inicial da Fase 6:
   Membership, idempotencia, snapshots, auditoria e Outbox. Componentes tombaveis
   precisam apontar para Patrimonio proprio com Tombo ativo; componentes nao
   tombaveis permanecem quantitativos e nao geram Tombo por inferencia.
+- `application/get-patrimony-composition-history.ts` e
+  `infrastructure/postgres-patrimony-composition-history-reader.ts`: Query
+  paginada do historico de composicao, com escopo por Membership, campos minimos
+  e carregamento dos itens em lote sem N+1.
 - A criacao de Patrimonios a partir de Kits/Entregas `PARCIAL`, retombamento,
   movimentacoes e APIs de composicao continuam pendentes.
 
