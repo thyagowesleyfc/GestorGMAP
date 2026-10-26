@@ -22,8 +22,15 @@ Incremento inicial da Fase 6:
   Entregas `TOTAL` com Material Singular tombavel; `PARCIAL` e configuracoes
   permanecem explicitamente pendentes de incorporacao.
 - `patrimony_composition` e `patrimony_composition_item`: fundacao versionada
-  para snapshots de configuracoes e componentes; o Command de composicao ainda
-  nao foi implementado.
+  para snapshots de configuracoes e componentes.
+- `application/register-patrimony-composition.ts` e
+  `infrastructure/postgres-patrimony-composition-registerer.ts`: Command atomico
+  para registrar nova revisao de composicao concreta, com autorizacao por
+  Membership, idempotencia, snapshots, auditoria e Outbox. Componentes tombaveis
+  precisam apontar para Patrimonio proprio com Tombo ativo; componentes nao
+  tombaveis permanecem quantitativos e nao geram Tombo por inferencia.
+- A criacao de Patrimonios a partir de Kits/Entregas `PARCIAL`, retombamento,
+  movimentacoes e APIs de composicao continuam pendentes.
 
 O alocador de sequencia garante unicidade e ordem sob concorrencia, mas nao e um Command
 idempotente isolado. Commands de incorporacao e futuros Commands de retombamento devem chamar a alocacao
