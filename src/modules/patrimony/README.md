@@ -37,6 +37,10 @@ Incremento inicial da Fase 6:
   `infrastructure/postgres-patrimony-retomber.ts`: retombamento atomico do mesmo
   Patrimonio, encerrando o Tombo anterior, alocando novo Tombo na sequencia do
   mesmo grupo e mantendo auditoria, Outbox e idempotencia.
+- `application/retificar-patrimony.ts` e
+  `infrastructure/postgres-patrimony-retifier.ts`: retificacao do Material
+  Singular do mesmo Patrimonio, sem alterar Entidade, Tombo ou snapshots, com
+  validacao de compatibilidade, auditoria, Outbox e idempotencia.
 - A criacao de Patrimonios a partir de Kits/Entregas `PARCIAL`, movimentacoes e
   APIs de composicao continuam pendentes.
 
@@ -44,4 +48,4 @@ O alocador de sequencia garante unicidade e ordem sob concorrencia, mas nao e um
 idempotente isolado. Commands de incorporacao e futuros Commands de retombamento devem chamar a alocacao
 na mesma transacao idempotente do efeito patrimonial para evitar consumo repetido em retry.
 
-Ainda nao ha retombamento, movimentacoes ou APIs neste contexto.
+Ainda nao ha movimentacoes ou APIs neste contexto.
