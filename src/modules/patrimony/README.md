@@ -56,8 +56,7 @@ Incremento inicial da Fase 6:
   `infrastructure/postgres-patrimony-recolhedor.ts`: efeito patrimonial da
   Recolha somente apos a LogisticsRecollection estar `EXECUTADA`, vinculando
   a origem/destino resolvidos, preservando Patrimonio/Tombo e registrando
-  movimento, auditoria, Outbox e idempotencia. Devolucao e Baixa continuam
-  pendentes.
+  movimento, auditoria, Outbox e idempotencia. A devolucao permanece pendente.
 - `application/baixar-patrimony.ts` e
   `infrastructure/postgres-patrimony-baixador.ts`: Baixa atomica com estado
   `BAIXADO`, motivos `INSERVIBILIDADE`, `FURTO` e `PERDA`, encerramento do
@@ -66,6 +65,11 @@ Incremento inicial da Fase 6:
   autorizacao sao obrigatorias; baixa quantitativa pode ocorrer sem laudo
   individual. As referencias apontam para evidencias existentes e nao criam
   laudos artificiais.
+- `application/get-patrimony-timeline.ts` e
+  `infrastructure/postgres-patrimony-timeline-reader.ts`: Query read-only
+  paginada do historico inicial de um Patrimonio, reconstruida a partir de
+  incorporacao, Tombos, composicoes, movimentos, Baixa e retificacao, com escopo por
+  Membership. Nao usa Outbox como historico e nao cria projecao materializada.
 - A criacao de Patrimonios a partir de Kits/Entregas `PARCIAL` e APIs de
   composicao continuam pendentes.
 
