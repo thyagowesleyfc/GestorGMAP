@@ -58,12 +58,21 @@ Incremento inicial da Fase 6:
   a origem/destino resolvidos, preservando Patrimonio/Tombo e registrando
   movimento, auditoria, Outbox e idempotencia. Devolucao e Baixa continuam
   pendentes.
-- A criacao de Patrimonios a partir de Kits/Entregas `PARCIAL`, Baixa e APIs
-  de composicao continuam pendentes.
+- `application/baixar-patrimony.ts` e
+  `infrastructure/postgres-patrimony-baixador.ts`: Baixa atomica com estado
+  `BAIXADO`, motivos `INSERVIBILIDADE`, `FURTO` e `PERDA`, encerramento do
+  Tombo ativo quando aplicavel, auditoria, Outbox e idempotencia. Para
+  `INSERVIBILIDADE` de bem tombavel, referencias de procedimento/laudo e
+  autorizacao sao obrigatorias; baixa quantitativa pode ocorrer sem laudo
+  individual. As referencias apontam para evidencias existentes e nao criam
+  laudos artificiais.
+- A criacao de Patrimonios a partir de Kits/Entregas `PARCIAL` e APIs de
+  composicao continuam pendentes.
 
 O alocador de sequencia garante unicidade e ordem sob concorrencia, mas nao e um Command
 idempotente isolado. Commands de incorporacao e futuros Commands de retombamento devem chamar a alocacao
 na mesma transacao idempotente do efeito patrimonial para evitar consumo repetido em retry.
 
 Ainda nao ha APIs neste contexto. Os movimentos implementados nesta etapa sao
-Remanejamento, Emprestimo e Recolha de Patrimonio sem composicao concreta.
+Remanejamento, Emprestimo e Recolha de Patrimonio; Baixa e tratada como estado
+terminal com historico proprio. Todos permanecem sem composicao concreta.

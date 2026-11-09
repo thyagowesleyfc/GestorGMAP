@@ -137,6 +137,19 @@ enum PatrimonyMovementType {
   RECOLHA
 }
 
+enum PatrimonyOperationalState {
+  EM_USO
+  RECOLHIDO
+  EM_MANUTENCAO
+  BAIXADO
+}
+
+enum PatrimonyWriteOffReason {
+  INSERVIBILIDADE
+  FURTO
+  PERDA
+}
+
 enum StockReservationStatus {
   ATIVA
 }
@@ -1070,6 +1083,7 @@ model Patrimony {
   id                          String                     @id @default(uuid()) @db.Uuid
   materialSingularId          String                     @map("material_singular_id") @db.Uuid
   responsibleEntityId         String                     @map("responsible_entity_id") @db.Uuid
+  operationalState            PatrimonyOperationalState  @default(EM_USO) @map("operational_state")
   sourceDeliveryId            String?                    @map("source_delivery_id") @db.Uuid
   sourceShipmentItemId        String?                    @map("source_shipment_item_id") @db.Uuid
   incorporatedAt              DateTime?                  @map("incorporated_at")
@@ -1081,16 +1095,35 @@ model Patrimony {
   sourceDelivery              LogisticsDelivery?         @relation(fields: [sourceDeliveryId], references: [id], onDelete: Restrict)
   sourceShipmentItem          LogisticsShipmentItem?     @relation(fields: [sourceShipmentItemId], references: [id], onDelete: Restrict)
   tombos                      PatrimonyTombo[]
+  writeOff                    PatrimonyWriteOff?
   compositions                PatrimonyComposition[]
   compositionItemsAsComponent PatrimonyCompositionItem[] @relation("PatrimonyCompositionComponent")
   movements                   PatrimonyMovement[]
 
   @@index([materialSingularId])
   @@index([responsibleEntityId])
+  @@index([operationalState])
   @@index([sourceDeliveryId])
   @@index([sourceShipmentItemId])
   @@index([incorporatedAt])
   @@map("patrimony")
+}
+
+model PatrimonyWriteOff {
+  id                         String                  @id @default(uuid()) @db.Uuid
+  patrimonyId                String                  @unique @map("patrimony_id") @db.Uuid
+  reason                     PatrimonyWriteOffReason
+  occurredAt                 DateTime                @map("occurred_at")
+  justification              String                  @db.VarChar(500)
+  procedureOrReportReference String?                 @map("procedure_or_report_reference") @db.VarChar(160)
+  authorizationReference     String?                 @map("authorization_reference") @db.VarChar(160)
+  correlationId              String                  @map("correlation_id") @db.VarChar(160)
+  createdAt                  DateTime                @default(now()) @map("created_at")
+  patrimony                  Patrimony               @relation(fields: [patrimonyId], references: [id], onDelete: Restrict)
+
+  @@index([reason])
+  @@index([occurredAt])
+  @@map("patrimony_write_off")
 }
 
 model PatrimonyMovement {
