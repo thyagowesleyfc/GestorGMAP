@@ -175,6 +175,21 @@ enum MaterialRequestReferenceSystem {
   REDMINE
 }
 
+enum MaintenanceRequestStatus {
+  REGISTRADA
+  EM_ANALISE
+  ATENDIMENTO_EMITIDO
+  ATENDIDA
+  FINALIZADA
+  REJEITADA
+  CANCELADA
+}
+
+enum MaintenanceRequestReferenceSystem {
+  SEI
+  REDMINE
+}
+
 enum LogisticsShipmentStatus {
   REGISTRADA
 }
@@ -237,6 +252,7 @@ model UserAccount {
   internalNotifications             InternalNotification[]
   logisticsRecollectionsRequested   LogisticsRecollection[]
   MaterialRequest                   MaterialRequest[]
+  maintenanceRequestsRegistered     MaintenanceRequest[]
 
   @@index([personId])
   @@map("user_account")
@@ -373,6 +389,7 @@ model Entity {
   logisticsShipments              LogisticsShipment[]
   logisticsRecollectionsRequested LogisticsRecollection[] @relation("LogisticsRecollectionRequestingEntity")
   logisticsRecollectionsReceiving LogisticsRecollection[] @relation("LogisticsRecollectionReceivingEntity")
+  maintenanceRequests             MaintenanceRequest[]
 
   @@index([entityType])
   @@index([greId])
@@ -954,6 +971,44 @@ model StockReturn {
   @@index([status])
   @@index([returnedAt])
   @@map("stock_return")
+}
+
+model MaintenanceRequest {
+  id                 String                        @id @default(uuid()) @db.Uuid
+  requestingEntityId String                        @map("requesting_entity_id") @db.Uuid
+  status             MaintenanceRequestStatus      @default(REGISTRADA)
+  summary            String                        @db.VarChar(500)
+  description        String                        @db.Text
+  requestedAt        DateTime                      @map("requested_at")
+  registeredByUserId String?                       @map("registered_by_user_id") @db.Uuid
+  version            Int                           @default(1)
+  correlationId      String                        @map("correlation_id") @db.VarChar(160)
+  createdAt          DateTime                      @default(now()) @map("created_at")
+  updatedAt          DateTime                      @updatedAt @map("updated_at")
+  requestingEntity   Entity                        @relation(fields: [requestingEntityId], references: [id], onDelete: Restrict)
+  registeredByUser   UserAccount?                  @relation(fields: [registeredByUserId], references: [id], onDelete: Restrict)
+  references         MaintenanceRequestReference[]
+
+  @@index([requestingEntityId])
+  @@index([status])
+  @@index([requestedAt])
+  @@index([registeredByUserId])
+  @@map("maintenance_request")
+}
+
+model MaintenanceRequestReference {
+  id                   String                            @id @default(uuid()) @db.Uuid
+  maintenanceRequestId String                            @map("maintenance_request_id") @db.Uuid
+  system               MaintenanceRequestReferenceSystem
+  identifier           String                            @db.VarChar(160)
+  url                  String?                           @db.VarChar(500)
+  createdAt            DateTime                          @default(now()) @map("created_at")
+  updatedAt            DateTime                          @updatedAt @map("updated_at")
+  maintenanceRequest   MaintenanceRequest                @relation(fields: [maintenanceRequestId], references: [id], onDelete: Cascade)
+
+  @@unique([system, identifier], map: "maintenance_request_reference_system_identifier_key")
+  @@index([maintenanceRequestId])
+  @@map("maintenance_request_reference")
 }
 
 model LogisticsShipment {
