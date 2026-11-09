@@ -193,9 +193,91 @@ describe("retombar patrimony", () => {
       await postgres.stop();
     }
   });
+
+  it("faz rollback integral quando o novo Tombo entra em conflito", async () => {
+    const postgres = await new PostgreSqlContainer("postgres:17-alpine").start();
+    const client = new Client({ connectionString: postgres.getConnectionUri() });
+    const pool = new Pool({ connectionString: postgres.getConnectionUri(), max: 8 });
+
+    try {
+      await runPrismaMigrateDeploy(postgres.getConnectionUri());
+      await client.connect();
+      const seed = await seedRetombamento(client);
+      const conflictingPatrimonyId = randomUUID();
+      const useCase = new RetombarPatrimony(new PostgresPatrimonyRetomber(pool));
+
+      await client.query(
+        `insert into "patrimony" (
+          "id", "material_singular_id", "responsible_entity_id", "updated_at"
+        ) values ($1, $2, $3, current_timestamp)`,
+        [conflictingPatrimonyId, seed.materialId, seed.entityId]
+      );
+      await client.query(
+        `insert into "patrimony_tombo" (
+          "id", "patrimony_id", "tombo", "patrimonial_group_code", "issued_at", "updated_at"
+        ) values ($1, $2, '011-01-000002', '01', $3, current_timestamp)`,
+        [randomUUID(), conflictingPatrimonyId, "2026-10-25T16:00:00.000Z"]
+      );
+
+      await expect(
+        useCase.execute({
+          commandId: "cmd-retombar-rollback",
+          patrimonyId: seed.patrimonyId,
+          retombedAt: new Date("2026-10-26T14:00:00.000Z"),
+          reason: "Conflito determinístico de Tombo",
+          actorUserId: seed.authorizedUserId,
+          teamContext: "PatrimÃ´nio"
+        })
+      ).rejects.toMatchObject({ code: "23505" });
+
+      const rolledBackTombo = await client.query<{
+        tombo: string;
+        status: string;
+        retired_at: string | null;
+      }>(
+        `select "tombo", "status"::text, "retired_at"::text
+           from "patrimony_tombo"
+          where "patrimony_id" = $1
+          order by "issued_at"`,
+        [seed.patrimonyId]
+      );
+      expect(rolledBackTombo.rows).toEqual([
+        { tombo: "011-01-000001", status: "ATIVO", retired_at: null }
+      ]);
+
+      const rolledBackState = await client.query<{
+        current_value: number;
+        version: number;
+        audits: number;
+        outbox_events: number;
+      }>(
+        `select
+           (select "current_value" from "patrimony_tombo_sequence"
+             where "patrimonial_group_code" = '01') as "current_value",
+           (select "version" from "patrimony" where "id" = $1) as "version",
+           (select count(*)::int from "audit_entry"
+             where "action" = 'patrimony.retombar' and "object_id" = $1::text) as "audits",
+           (select count(*)::int from "outbox_event"
+             where "event_type" = 'patrimony.retombed' and "aggregate_id" = $1::text) as "outbox_events"`,
+        [seed.patrimonyId]
+      );
+      expect(rolledBackState.rows[0]).toEqual({
+        current_value: 1,
+        version: 1,
+        audits: 0,
+        outbox_events: 0
+      });
+    } finally {
+      await pool.end().catch(() => undefined);
+      await client.end().catch(() => undefined);
+      await postgres.stop();
+    }
+  });
 });
 
 type RetombamentoSeed = {
+  entityId: string;
+  materialId: string;
   patrimonyId: string;
   authorizedUserId: string;
   technicalUserId: string;
@@ -280,5 +362,5 @@ async function seedRetombamento(client: Client): Promise<RetombamentoSeed> {
     [randomUUID(), authorizedUserId, teamId, greCode]
   );
 
-  return { patrimonyId, authorizedUserId, technicalUserId };
+  return { entityId, materialId, patrimonyId, authorizedUserId, technicalUserId };
 }
