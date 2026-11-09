@@ -70,6 +70,12 @@ Incremento inicial da Fase 6:
   paginada do historico inicial de um Patrimonio, reconstruida a partir de
   incorporacao, Tombos, composicoes, movimentos, Baixa e retificacao, com escopo por
   Membership. Nao usa Outbox como historico e nao cria projecao materializada.
+- `application/get-entity-patrimony-inventory.ts` e
+  `infrastructure/postgres-entity-patrimony-inventory-reader.ts`: Read Model
+  paginado da posicao patrimonial atual por Entidade, com Tombo ativo, ultima
+  composicao, estado operacional e filtros de material/estado. Baixados ficam
+  fora por padrao; quantitativos de estoque permanecem no `StockPosition` e nao
+  sao misturados a este inventario patrimonial.
 - A criacao de Patrimonios a partir de Kits/Entregas `PARCIAL` e APIs de
   composicao continuam pendentes.
 
