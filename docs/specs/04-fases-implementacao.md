@@ -227,9 +227,10 @@ Fechar manutenção interna/externa, garantia e efeitos contratuais.
 
 ### Entregas
 
-- Solicitação de Manutenção;
-- estratégia de atendimento;
-- UTD/CERME como atores externos;
+- Solicitação de Manutenção para um ou mais Patrimônios-alvo;
+- autorização da Gerência antes do vínculo dos alvos e da estratégia de atendimento;
+- estratégia de atendimento comum ou específica por Patrimônio-alvo, conforme as regras aplicáveis;
+- UTD/CERME como opções simples de estratégia e atores externos, sem cadastro próprio inicialmente;
 - Laudo versionado;
 - Contrato de Serviço;
 - OS;
@@ -244,6 +245,10 @@ Fechar manutenção interna/externa, garantia e efeitos contratuais.
 ### Gate
 
 OS emitida é imutável; glosa restitui apenas saldo correspondente; irrecuperável não baixa automaticamente.
+
+Na Solicitação de Manutenção, autorização da Gerência é gate de negócio e não
+se confunde com ciência. A definição da estratégia e o vínculo de um ou mais
+Patrimônios-alvo somente ocorrem depois da autorização.
 
 ---
 

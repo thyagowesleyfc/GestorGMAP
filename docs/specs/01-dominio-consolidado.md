@@ -527,11 +527,20 @@ Fluxo:
 
 ```text
 Entidade → SEI/Redmine → Triagem registra
-→ Gerência autoriza
-→ Patrimônio assume
+→ Gerência autoriza a Solicitação
+→ Patrimônio vincula um ou mais Patrimônios-alvo
+→ Patrimônio define a estratégia de atendimento
 ```
 
 Determinação superior pode ser criada pela Gerência já autorizada.
+
+Uma Solicitação de Manutenção pode abranger um ou mais Patrimônios-alvo. O vínculo
+com os Patrimônios-alvo ocorre depois da autorização da Gerência, como parte da
+assunção operacional pelo Patrimônio.
+
+A autorização da Gerência é o gate de negócio da Solicitação. Ciência ou
+notificação da Gerência não substitui autorização e não libera a definição da
+estratégia.
 
 ### Estratégia de atendimento
 
@@ -547,11 +556,20 @@ Fluxo técnico obrigatório da Classe
 
 Possibilidades: UTD, CERME, Contrato de Serviço, Garantia, avaliação para baixa ou rejeição.
 
+A estratégia pode ser comum a vários Patrimônios-alvo quando as regras aplicáveis
+forem compatíveis. Quando garantia, classe, contrato ou outra regra do Patrimônio
+exigir tratamento diferente, a estratégia deve ser definida de forma específica
+para cada alvo correspondente.
+
+A estratégia somente pode ser definida depois da autorização da Gerência. Sua
+definição não substitui a autorização nem representa mera ciência.
+
 Após emissão do atendimento, estratégia fica congelada; mudança exige cancelamento e novo atendimento.
 
 ### UTD / CERME
 
-São atores externos sem usuário no GMAP inicialmente.
+São opções simples de estratégia e atores externos, sem cadastro próprio ou
+usuário no GMAP inicialmente.
 
 ### Laudo
 
@@ -1020,7 +1038,7 @@ Exemplos relevantes:
 `PatrimonioIncorporado`, `TomboGerado`, `TombamentoFisicoConfirmado`, `PatrimonioRemanejado`, `PatrimonioEmprestado`, `PatrimonioRecolhido`, `PatrimonioBaixado`, `RetombamentoRealizado`, `ComponentePatrimonialSubstituido`.
 
 ### Manutenção
-`SolicitacaoDeManutencaoRegistrada`, `EstrategiaDeAtendimentoDefinida`, `LaudoEmitido`, `OrdemDeServicoEmitida`, `ServicoAtestado`, `ExecucaoGlosadaParcialmente`, `ExecucaoGlosadaTotalmente`, `PatrimonioRecondicionado`, `PatrimonioSubstituidoEmGarantia`.
+`SolicitacaoDeManutencaoRegistrada`, `SolicitacaoDeManutencaoAutorizada`, `PatrimoniosAlvoVinculados`, `EstrategiaDeAtendimentoDefinida`, `LaudoEmitido`, `OrdemDeServicoEmitida`, `ServicoAtestado`, `ExecucaoGlosadaParcialmente`, `ExecucaoGlosadaTotalmente`, `PatrimonioRecondicionado`, `PatrimonioSubstituidoEmGarantia`.
 
 ### Fiscalização
 `FiscalizacaoAgendada`, `FiscalizacaoIniciada`, `ConferenciaDeEntidadeConcluida`, `PatrimonioLocalizadoConforme`, `PatrimonioLocalizadoNaoConforme`, `PatrimonioLocalizadoComDivergencia`, `PatrimonioNaoLocalizado`, `DivergenciaRegularizada`, `FiscalizacaoEncerrada`.
@@ -1054,6 +1072,10 @@ Integration Events futuros serão derivados dos eventos internos quando necessá
 21. Migração inválida não produz alteração parcial no lote.
 22. Legado não redefine regras do domínio novo.
 23. Observação offline nunca sobrescreve movimento oficial posterior à versão de referência.
+24. Solicitação de Manutenção pode abranger um ou mais Patrimônios-alvo.
+25. Patrimônios-alvo só são vinculados e encaminhados à estratégia depois da autorização da Gerência.
+26. Ciência da Gerência não substitui autorização nem libera operação de negócio.
+27. UTD/CERME não exigem cadastro próprio ou usuário no GMAP na fase inicial.
 
 ---
 

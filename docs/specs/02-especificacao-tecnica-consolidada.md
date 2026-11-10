@@ -467,6 +467,30 @@ Escopo é imposto no backend também em Queries.
 
 Superusuário técnico não ganha competência de negócio automaticamente.
 
+### Manutenção: autorização, Patrimônios-alvo e estratégia
+
+Uma Solicitação de Manutenção pode se relacionar com um ou mais Patrimônios-alvo.
+Essa relação deve ser explícita e suportar cardinalidade múltipla; não modelar o
+domínio com uma única coluna de Patrimônio na Solicitação.
+
+O Command que autoriza a Solicitação pela Gerência é um gate de negócio. O
+vínculo dos Patrimônios-alvo e a definição da estratégia somente podem ocorrer
+depois de existir essa autorização registrada. Ciência ou notificação da Gerência
+é uma informação distinta e não satisfaz essa pré-condição.
+
+A estratégia pode ser compartilhada por vários Patrimônios-alvo compatíveis ou
+persistida individualmente por alvo quando garantia, classe, contrato ou outra
+regra aplicável exigir tratamento diferente. UTD e CERME são opções simples de
+estratégia e atores externos, sem usuários ou cadastro próprio no GMAP
+inicialmente.
+
+Commands de autorização, vínculo de alvos e definição de estratégia devem
+respeitar escopo e Membership, registrar auditoria e Outbox quando houver fato
+de negócio, ser idempotentes quando expostos a retry e rejeitar tentativa de
+definir estratégia antes da autorização. A relação de um e de vários alvos, a
+autorização, a distinção entre autorização e ciência e a idempotência devem ter
+testes unitários e de integração com PostgreSQL.
+
 ---
 
 ## 17. Segurança web
