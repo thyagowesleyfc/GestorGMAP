@@ -253,6 +253,7 @@ model UserAccount {
   logisticsRecollectionsRequested   LogisticsRecollection[]
   MaterialRequest                   MaterialRequest[]
   maintenanceRequestsRegistered     MaintenanceRequest[]
+  maintenanceRequestsAuthorized     MaintenanceRequest[]               @relation("MaintenanceRequestAuthorizedBy")
 
   @@index([personId])
   @@map("user_account")
@@ -974,25 +975,31 @@ model StockReturn {
 }
 
 model MaintenanceRequest {
-  id                 String                        @id @default(uuid()) @db.Uuid
-  requestingEntityId String                        @map("requesting_entity_id") @db.Uuid
-  status             MaintenanceRequestStatus      @default(REGISTRADA)
-  summary            String                        @db.VarChar(500)
-  description        String                        @db.Text
-  requestedAt        DateTime                      @map("requested_at")
-  registeredByUserId String?                       @map("registered_by_user_id") @db.Uuid
-  version            Int                           @default(1)
-  correlationId      String                        @map("correlation_id") @db.VarChar(160)
-  createdAt          DateTime                      @default(now()) @map("created_at")
-  updatedAt          DateTime                      @updatedAt @map("updated_at")
-  requestingEntity   Entity                        @relation(fields: [requestingEntityId], references: [id], onDelete: Restrict)
-  registeredByUser   UserAccount?                  @relation(fields: [registeredByUserId], references: [id], onDelete: Restrict)
-  references         MaintenanceRequestReference[]
+  id                  String                        @id @default(uuid()) @db.Uuid
+  requestingEntityId  String                        @map("requesting_entity_id") @db.Uuid
+  status              MaintenanceRequestStatus      @default(REGISTRADA)
+  summary             String                        @db.VarChar(500)
+  description         String                        @db.Text
+  requestedAt         DateTime                      @map("requested_at")
+  registeredByUserId  String?                       @map("registered_by_user_id") @db.Uuid
+  authorizedAt        DateTime?                     @map("authorized_at")
+  authorizedByUserId  String?                       @map("authorized_by_user_id") @db.Uuid
+  authorizationReason String?                       @map("authorization_reason") @db.VarChar(1000)
+  version             Int                           @default(1)
+  correlationId       String                        @map("correlation_id") @db.VarChar(160)
+  createdAt           DateTime                      @default(now()) @map("created_at")
+  updatedAt           DateTime                      @updatedAt @map("updated_at")
+  requestingEntity    Entity                        @relation(fields: [requestingEntityId], references: [id], onDelete: Restrict)
+  registeredByUser    UserAccount?                  @relation(fields: [registeredByUserId], references: [id], onDelete: Restrict)
+  authorizedByUser    UserAccount?                  @relation("MaintenanceRequestAuthorizedBy", fields: [authorizedByUserId], references: [id], onDelete: Restrict)
+  references          MaintenanceRequestReference[]
 
   @@index([requestingEntityId])
   @@index([status])
   @@index([requestedAt])
   @@index([registeredByUserId])
+  @@index([authorizedAt])
+  @@index([authorizedByUserId])
   @@map("maintenance_request")
 }
 
