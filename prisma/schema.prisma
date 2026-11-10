@@ -233,27 +233,28 @@ model Person {
 }
 
 model UserAccount {
-  id                                String                             @id @default(uuid()) @db.Uuid
-  personId                          String                             @unique @map("person_id") @db.Uuid
-  loginIdentifier                   String                             @unique @map("login_identifier") @db.VarChar(160)
-  status                            UserStatus                         @default(ACTIVE)
-  isTechnicalSuperuser              Boolean                            @default(false) @map("is_technical_superuser")
-  createdAt                         DateTime                           @default(now()) @map("created_at")
-  updatedAt                         DateTime                           @updatedAt @map("updated_at")
-  person                            Person                             @relation(fields: [personId], references: [id], onDelete: Restrict)
-  memberships                       TeamMembership[]
-  passwordCredential                PasswordCredential?
-  passwordRecoveries                PasswordRecoveryRequest[]
-  sessions                          UserSession[]
-  receivingEntryDocuments           ReceivingEntryDocument[]
-  receivingEntryItemRegularizations ReceivingEntryItemRegularization[]
-  auditEntries                      AuditEntry[]
-  logisticsDeliveryDocuments        LogisticsDeliveryDocument[]
-  internalNotifications             InternalNotification[]
-  logisticsRecollectionsRequested   LogisticsRecollection[]
-  MaterialRequest                   MaterialRequest[]
-  maintenanceRequestsRegistered     MaintenanceRequest[]
-  maintenanceRequestsAuthorized     MaintenanceRequest[]               @relation("MaintenanceRequestAuthorizedBy")
+  id                                 String                              @id @default(uuid()) @db.Uuid
+  personId                           String                              @unique @map("person_id") @db.Uuid
+  loginIdentifier                    String                              @unique @map("login_identifier") @db.VarChar(160)
+  status                             UserStatus                          @default(ACTIVE)
+  isTechnicalSuperuser               Boolean                             @default(false) @map("is_technical_superuser")
+  createdAt                          DateTime                            @default(now()) @map("created_at")
+  updatedAt                          DateTime                            @updatedAt @map("updated_at")
+  person                             Person                              @relation(fields: [personId], references: [id], onDelete: Restrict)
+  memberships                        TeamMembership[]
+  passwordCredential                 PasswordCredential?
+  passwordRecoveries                 PasswordRecoveryRequest[]
+  sessions                           UserSession[]
+  receivingEntryDocuments            ReceivingEntryDocument[]
+  receivingEntryItemRegularizations  ReceivingEntryItemRegularization[]
+  auditEntries                       AuditEntry[]
+  logisticsDeliveryDocuments         LogisticsDeliveryDocument[]
+  internalNotifications              InternalNotification[]
+  logisticsRecollectionsRequested    LogisticsRecollection[]
+  MaterialRequest                    MaterialRequest[]
+  maintenanceRequestsRegistered      MaintenanceRequest[]
+  maintenanceRequestsAuthorized      MaintenanceRequest[]                @relation("MaintenanceRequestAuthorizedBy")
+  maintenanceRequestPatrimonyTargets MaintenanceRequestPatrimonyTarget[] @relation("MaintenanceRequestPatrimonyTargetLinkedBy")
 
   @@index([personId])
   @@map("user_account")
@@ -975,24 +976,25 @@ model StockReturn {
 }
 
 model MaintenanceRequest {
-  id                  String                        @id @default(uuid()) @db.Uuid
-  requestingEntityId  String                        @map("requesting_entity_id") @db.Uuid
-  status              MaintenanceRequestStatus      @default(REGISTRADA)
-  summary             String                        @db.VarChar(500)
-  description         String                        @db.Text
-  requestedAt         DateTime                      @map("requested_at")
-  registeredByUserId  String?                       @map("registered_by_user_id") @db.Uuid
-  authorizedAt        DateTime?                     @map("authorized_at")
-  authorizedByUserId  String?                       @map("authorized_by_user_id") @db.Uuid
-  authorizationReason String?                       @map("authorization_reason") @db.VarChar(1000)
-  version             Int                           @default(1)
-  correlationId       String                        @map("correlation_id") @db.VarChar(160)
-  createdAt           DateTime                      @default(now()) @map("created_at")
-  updatedAt           DateTime                      @updatedAt @map("updated_at")
-  requestingEntity    Entity                        @relation(fields: [requestingEntityId], references: [id], onDelete: Restrict)
-  registeredByUser    UserAccount?                  @relation(fields: [registeredByUserId], references: [id], onDelete: Restrict)
-  authorizedByUser    UserAccount?                  @relation("MaintenanceRequestAuthorizedBy", fields: [authorizedByUserId], references: [id], onDelete: Restrict)
+  id                  String                              @id @default(uuid()) @db.Uuid
+  requestingEntityId  String                              @map("requesting_entity_id") @db.Uuid
+  status              MaintenanceRequestStatus            @default(REGISTRADA)
+  summary             String                              @db.VarChar(500)
+  description         String                              @db.Text
+  requestedAt         DateTime                            @map("requested_at")
+  registeredByUserId  String?                             @map("registered_by_user_id") @db.Uuid
+  authorizedAt        DateTime?                           @map("authorized_at")
+  authorizedByUserId  String?                             @map("authorized_by_user_id") @db.Uuid
+  authorizationReason String?                             @map("authorization_reason") @db.VarChar(1000)
+  version             Int                                 @default(1)
+  correlationId       String                              @map("correlation_id") @db.VarChar(160)
+  createdAt           DateTime                            @default(now()) @map("created_at")
+  updatedAt           DateTime                            @updatedAt @map("updated_at")
+  requestingEntity    Entity                              @relation(fields: [requestingEntityId], references: [id], onDelete: Restrict)
+  registeredByUser    UserAccount?                        @relation(fields: [registeredByUserId], references: [id], onDelete: Restrict)
+  authorizedByUser    UserAccount?                        @relation("MaintenanceRequestAuthorizedBy", fields: [authorizedByUserId], references: [id], onDelete: Restrict)
   references          MaintenanceRequestReference[]
+  patrimonyTargets    MaintenanceRequestPatrimonyTarget[]
 
   @@index([requestingEntityId])
   @@index([status])
@@ -1016,6 +1018,25 @@ model MaintenanceRequestReference {
   @@unique([system, identifier], map: "maintenance_request_reference_system_identifier_key")
   @@index([maintenanceRequestId])
   @@map("maintenance_request_reference")
+}
+
+model MaintenanceRequestPatrimonyTarget {
+  id                   String             @id @default(uuid()) @db.Uuid
+  maintenanceRequestId String             @map("maintenance_request_id") @db.Uuid
+  patrimonyId          String             @map("patrimony_id") @db.Uuid
+  linkedAt             DateTime           @map("linked_at")
+  linkedByUserId       String             @map("linked_by_user_id") @db.Uuid
+  correlationId        String             @map("correlation_id") @db.VarChar(160)
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+  maintenanceRequest   MaintenanceRequest @relation(fields: [maintenanceRequestId], references: [id], onDelete: Restrict)
+  patrimony            Patrimony          @relation(fields: [patrimonyId], references: [id], onDelete: Restrict)
+  linkedByUser         UserAccount        @relation("MaintenanceRequestPatrimonyTargetLinkedBy", fields: [linkedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([maintenanceRequestId, patrimonyId], map: "maintenance_request_patrimony_target_request_patrimony_key")
+  @@index([patrimonyId])
+  @@index([linkedByUserId])
+  @@map("maintenance_request_patrimony_target")
 }
 
 model LogisticsShipment {
@@ -1142,25 +1163,26 @@ model LogisticsRecollection {
 }
 
 model Patrimony {
-  id                          String                     @id @default(uuid()) @db.Uuid
-  materialSingularId          String                     @map("material_singular_id") @db.Uuid
-  responsibleEntityId         String                     @map("responsible_entity_id") @db.Uuid
-  operationalState            PatrimonyOperationalState  @default(EM_USO) @map("operational_state")
-  sourceDeliveryId            String?                    @map("source_delivery_id") @db.Uuid
-  sourceShipmentItemId        String?                    @map("source_shipment_item_id") @db.Uuid
-  incorporatedAt              DateTime?                  @map("incorporated_at")
-  version                     Int                        @default(1)
-  createdAt                   DateTime                   @default(now()) @map("created_at")
-  updatedAt                   DateTime                   @updatedAt @map("updated_at")
-  materialSingular            MaterialSingular           @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
-  responsibleEntity           Entity                     @relation(fields: [responsibleEntityId], references: [id], onDelete: Restrict)
-  sourceDelivery              LogisticsDelivery?         @relation(fields: [sourceDeliveryId], references: [id], onDelete: Restrict)
-  sourceShipmentItem          LogisticsShipmentItem?     @relation(fields: [sourceShipmentItemId], references: [id], onDelete: Restrict)
+  id                          String                              @id @default(uuid()) @db.Uuid
+  materialSingularId          String                              @map("material_singular_id") @db.Uuid
+  responsibleEntityId         String                              @map("responsible_entity_id") @db.Uuid
+  operationalState            PatrimonyOperationalState           @default(EM_USO) @map("operational_state")
+  sourceDeliveryId            String?                             @map("source_delivery_id") @db.Uuid
+  sourceShipmentItemId        String?                             @map("source_shipment_item_id") @db.Uuid
+  incorporatedAt              DateTime?                           @map("incorporated_at")
+  version                     Int                                 @default(1)
+  createdAt                   DateTime                            @default(now()) @map("created_at")
+  updatedAt                   DateTime                            @updatedAt @map("updated_at")
+  materialSingular            MaterialSingular                    @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
+  responsibleEntity           Entity                              @relation(fields: [responsibleEntityId], references: [id], onDelete: Restrict)
+  sourceDelivery              LogisticsDelivery?                  @relation(fields: [sourceDeliveryId], references: [id], onDelete: Restrict)
+  sourceShipmentItem          LogisticsShipmentItem?              @relation(fields: [sourceShipmentItemId], references: [id], onDelete: Restrict)
   tombos                      PatrimonyTombo[]
   writeOff                    PatrimonyWriteOff?
   compositions                PatrimonyComposition[]
-  compositionItemsAsComponent PatrimonyCompositionItem[] @relation("PatrimonyCompositionComponent")
+  compositionItemsAsComponent PatrimonyCompositionItem[]          @relation("PatrimonyCompositionComponent")
   movements                   PatrimonyMovement[]
+  maintenanceRequestTargets   MaintenanceRequestPatrimonyTarget[]
 
   @@index([materialSingularId])
   @@index([responsibleEntityId])
