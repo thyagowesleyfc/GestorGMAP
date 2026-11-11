@@ -478,18 +478,34 @@ vínculo dos Patrimônios-alvo e a definição da estratégia somente podem ocor
 depois de existir essa autorização registrada. Ciência ou notificação da Gerência
 é uma informação distinta e não satisfaz essa pré-condição.
 
-A estratégia pode ser compartilhada por vários Patrimônios-alvo compatíveis ou
-persistida individualmente por alvo quando garantia, classe, contrato ou outra
-regra aplicável exigir tratamento diferente. UTD e CERME são opções simples de
-estratégia e atores externos, sem usuários ou cadastro próprio no GMAP
-inicialmente.
+A estratégia deve ser persistida por Patrimônio-alvo em relação própria, com
+unicidade por Solicitação + Patrimônio. Uma mesma opção pode ser repetida para
+vários alvos compatíveis; alvos com garantia, classe, contrato ou outra regra
+divergente recebem registros de estratégia distintos. UTD e CERME são opções
+simples de estratégia e atores externos, sem usuários ou cadastro próprio no
+GMAP inicialmente.
+
+O registro de estratégia por alvo deve manter, conforme aplicável, o tipo da
+estratégia, referência ao Contrato de Serviço, justificativa, usuário/data da
+definição e `correlation_id`. `CONTRATO_SERVICO` exige referência ao contrato
+aplicável. Rejeição não pertence ao tipo da estratégia: é transição própria da
+Solicitação para `REJEITADA`.
+
+O Command de definição exige Solicitação em `EM_ANALISE` e Patrimônios-alvo já
+vinculados. Todos os alvos recebidos devem ser validados antes da gravação; a
+operação é atômica e não permite estratégia parcial. A emissão do atendimento
+congela as estratégias; alteração posterior exige cancelamento e novo
+atendimento.
 
 Commands de autorização, vínculo de alvos e definição de estratégia devem
 respeitar escopo e Membership, registrar auditoria e Outbox quando houver fato
 de negócio, ser idempotentes quando expostos a retry e rejeitar tentativa de
 definir estratégia antes da autorização. A relação de um e de vários alvos, a
 autorização, a distinção entre autorização e ciência e a idempotência devem ter
-testes unitários e de integração com PostgreSQL.
+testes unitários e de integração com PostgreSQL. A definição de estratégia deve
+testar um alvo, vários alvos com estratégia comum, vários alvos com estratégias
+diferentes, alvo não vinculado, referência obrigatória de Contrato de Serviço,
+rollback e congelamento após emissão do atendimento.
 
 ---
 

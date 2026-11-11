@@ -229,7 +229,7 @@ Fechar manutenção interna/externa, garantia e efeitos contratuais.
 
 - Solicitação de Manutenção para um ou mais Patrimônios-alvo;
 - autorização da Gerência antes do vínculo dos alvos e da estratégia de atendimento;
-- estratégia de atendimento comum ou específica por Patrimônio-alvo, conforme as regras aplicáveis;
+- estratégia de atendimento persistida por Patrimônio-alvo, repetível para alvos compatíveis ou específica quando as regras divergirem;
 - UTD/CERME como opções simples de estratégia e atores externos, sem cadastro próprio inicialmente;
 - Laudo versionado;
 - Contrato de Serviço;

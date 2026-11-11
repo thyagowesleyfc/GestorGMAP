@@ -554,17 +554,22 @@ Fluxo técnico obrigatório da Classe
 → Unidade interna responsável
 ```
 
-Possibilidades: UTD, CERME, Contrato de Serviço, Garantia, avaliação para baixa ou rejeição.
+Possibilidades: UTD, CERME, Contrato de Serviço, Garantia ou avaliação para baixa.
 
-A estratégia pode ser comum a vários Patrimônios-alvo quando as regras aplicáveis
-forem compatíveis. Quando garantia, classe, contrato ou outra regra do Patrimônio
-exigir tratamento diferente, a estratégia deve ser definida de forma específica
-para cada alvo correspondente.
+A estratégia de atendimento é definida e persistida por Patrimônio-alvo. Cada
+alvo deve possuir uma estratégia antes da emissão do atendimento. A mesma
+estratégia pode ser repetida para vários alvos quando as regras aplicáveis forem
+compatíveis; quando garantia, classe, contrato ou outra regra do Patrimônio
+exigir tratamento diferente, cada alvo recebe sua própria estratégia.
+
+Rejeição não é uma estratégia de atendimento. É uma decisão terminal da
+Solicitação e deve ocorrer por transição própria para `REJEITADA`.
 
 A estratégia somente pode ser definida depois da autorização da Gerência. Sua
 definição não substitui a autorização nem representa mera ciência.
 
-Após emissão do atendimento, estratégia fica congelada; mudança exige cancelamento e novo atendimento.
+Após emissão do atendimento, as estratégias por Patrimônio-alvo ficam congeladas;
+mudança exige cancelamento e novo atendimento.
 
 ### UTD / CERME
 
