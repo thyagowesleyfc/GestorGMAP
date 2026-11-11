@@ -198,6 +198,12 @@ enum MaintenanceRequestPatrimonyStrategyType {
   AVALIACAO_BAIXA
 }
 
+enum MaintenanceRequestPatrimonyReportConclusion {
+  RECONDICIONAVEL
+  IRRECUPERAVEL
+  INDEFINIDO
+}
+
 enum LogisticsShipmentStatus {
   REGISTRADA
 }
@@ -264,6 +270,7 @@ model UserAccount {
   maintenanceRequestsAuthorized       MaintenanceRequest[]                  @relation("MaintenanceRequestAuthorizedBy")
   maintenanceRequestPatrimonyTargets  MaintenanceRequestPatrimonyTarget[]   @relation("MaintenanceRequestPatrimonyTargetLinkedBy")
   maintenanceRequestStrategiesDefined MaintenanceRequestPatrimonyStrategy[] @relation("MaintenanceRequestPatrimonyStrategyDefinedBy")
+  maintenanceRequestReportsIssued     MaintenanceRequestPatrimonyReport[]   @relation("MaintenanceRequestPatrimonyReportIssuedBy")
 
   @@index([personId])
   @@map("user_account")
@@ -1032,17 +1039,18 @@ model MaintenanceRequestReference {
 }
 
 model MaintenanceRequestPatrimonyTarget {
-  id                   String             @id @default(uuid()) @db.Uuid
-  maintenanceRequestId String             @map("maintenance_request_id") @db.Uuid
-  patrimonyId          String             @map("patrimony_id") @db.Uuid
-  linkedAt             DateTime           @map("linked_at")
-  linkedByUserId       String             @map("linked_by_user_id") @db.Uuid
-  correlationId        String             @map("correlation_id") @db.VarChar(160)
-  createdAt            DateTime           @default(now()) @map("created_at")
-  updatedAt            DateTime           @updatedAt @map("updated_at")
-  maintenanceRequest   MaintenanceRequest @relation(fields: [maintenanceRequestId], references: [id], onDelete: Restrict)
-  patrimony            Patrimony          @relation(fields: [patrimonyId], references: [id], onDelete: Restrict)
-  linkedByUser         UserAccount        @relation("MaintenanceRequestPatrimonyTargetLinkedBy", fields: [linkedByUserId], references: [id], onDelete: Restrict)
+  id                   String                              @id @default(uuid()) @db.Uuid
+  maintenanceRequestId String                              @map("maintenance_request_id") @db.Uuid
+  patrimonyId          String                              @map("patrimony_id") @db.Uuid
+  linkedAt             DateTime                            @map("linked_at")
+  linkedByUserId       String                              @map("linked_by_user_id") @db.Uuid
+  correlationId        String                              @map("correlation_id") @db.VarChar(160)
+  createdAt            DateTime                            @default(now()) @map("created_at")
+  updatedAt            DateTime                            @updatedAt @map("updated_at")
+  maintenanceRequest   MaintenanceRequest                  @relation(fields: [maintenanceRequestId], references: [id], onDelete: Restrict)
+  patrimony            Patrimony                           @relation(fields: [patrimonyId], references: [id], onDelete: Restrict)
+  linkedByUser         UserAccount                         @relation("MaintenanceRequestPatrimonyTargetLinkedBy", fields: [linkedByUserId], references: [id], onDelete: Restrict)
+  reports              MaintenanceRequestPatrimonyReport[]
 
   @@unique([maintenanceRequestId, patrimonyId], map: "maintenance_request_patrimony_target_request_patrimony_key")
   @@index([patrimonyId])
@@ -1072,6 +1080,27 @@ model MaintenanceRequestPatrimonyStrategy {
   @@index([contractId])
   @@index([definedByUserId])
   @@map("maintenance_request_patrimony_strategy")
+}
+
+model MaintenanceRequestPatrimonyReport {
+  id                   String                                      @id @default(uuid()) @db.Uuid
+  maintenanceRequestId String                                      @map("maintenance_request_id") @db.Uuid
+  patrimonyId          String                                      @map("patrimony_id") @db.Uuid
+  version              Int
+  conclusion           MaintenanceRequestPatrimonyReportConclusion
+  justification        String                                      @db.VarChar(1000)
+  issuedAt             DateTime                                    @map("issued_at")
+  issuedByUserId       String                                      @map("issued_by_user_id") @db.Uuid
+  correlationId        String                                      @map("correlation_id") @db.VarChar(160)
+  createdAt            DateTime                                    @default(now()) @map("created_at")
+  updatedAt            DateTime                                    @updatedAt @map("updated_at")
+  target               MaintenanceRequestPatrimonyTarget           @relation(fields: [maintenanceRequestId, patrimonyId], references: [maintenanceRequestId, patrimonyId], onDelete: Restrict)
+  issuedByUser         UserAccount                                 @relation("MaintenanceRequestPatrimonyReportIssuedBy", fields: [issuedByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([maintenanceRequestId, patrimonyId, version], map: "maintenance_request_patrimony_report_target_version_key")
+  @@index([maintenanceRequestId, patrimonyId, version])
+  @@index([issuedByUserId])
+  @@map("maintenance_request_patrimony_report")
 }
 
 model LogisticsShipment {
