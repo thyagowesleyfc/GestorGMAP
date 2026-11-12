@@ -54,7 +54,8 @@ describe("contracts balance movement migration", () => {
         "CANCELAMENTO_OF",
         "COMPROMETIMENTO_OF",
         "COMPROMETIMENTO_OS",
-        "CONTRATACAO"
+        "CONTRATACAO",
+        "GLOSA_OS"
       ]);
 
       const constraints = await client.query<{ conname: string }>(

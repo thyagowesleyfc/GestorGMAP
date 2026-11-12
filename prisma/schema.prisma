@@ -63,6 +63,7 @@ enum ContractBalanceMovementType {
   COMPROMETIMENTO_OF
   CANCELAMENTO_OF
   COMPROMETIMENTO_OS
+  GLOSA_OS
 }
 
 enum SupplyOrderStatus {
@@ -1175,6 +1176,8 @@ model MaintenanceServiceOrderService {
   quantity         Int
   unitPrice        Decimal                   @map("unit_price") @db.Decimal(14, 2)
   totalAmount      Decimal                   @map("total_amount") @db.Decimal(14, 2)
+  glosedQuantity   Int                       @default(0) @map("glosed_quantity")
+  glosedAmount     Decimal                   @default(0) @map("glosed_amount") @db.Decimal(14, 2)
   createdAt        DateTime                  @default(now()) @map("created_at")
   updatedAt        DateTime                  @updatedAt @map("updated_at")
   serviceOrder     MaintenanceServiceOrder   @relation(fields: [serviceOrderId], references: [id], onDelete: Restrict)
