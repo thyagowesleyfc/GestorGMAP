@@ -602,11 +602,12 @@ async function seedDependencies(client: Client): Promise<ServiceOrderSeed> {
     }
     await client.query(
       `insert into "maintenance_service_order_service" (
-         "id", "service_order_id", "line_number", "description", "updated_at"
+         "id", "service_order_id", "contract_item_id", "line_number", "description",
+         "quantity", "unit_price", "total_amount", "updated_at"
        ) values
-         ($1, $2, 1, 'Manutencao preventiva', current_timestamp),
-         ($3, $2, 2, 'Troca de componente', current_timestamp)`,
-      [randomUUID(), serviceOrderId, randomUUID()]
+         ($1, $2, $3, 1, 'Manutencao preventiva', 1, 1250.50, 1250.50, current_timestamp),
+         ($4, $2, $3, 2, 'Troca de componente', 2, 1250.50, 2501.00, current_timestamp)`,
+      [randomUUID(), serviceOrderId, ids.contractItem, randomUUID()]
     );
   }
 

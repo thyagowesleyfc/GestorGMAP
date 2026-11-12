@@ -53,6 +53,7 @@ describe("contracts balance movement migration", () => {
         "APOSTILAMENTO",
         "CANCELAMENTO_OF",
         "COMPROMETIMENTO_OF",
+        "COMPROMETIMENTO_OS",
         "CONTRATACAO"
       ]);
 

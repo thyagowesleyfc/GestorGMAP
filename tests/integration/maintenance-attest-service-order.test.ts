@@ -381,6 +381,7 @@ async function seedDependencies(client: Client): Promise<ServiceOrderSeed> {
     patrimonyTeam: randomUUID(),
     supplier: randomUUID(),
     contract: randomUUID(),
+    contractItem: randomUUID(),
     request: randomUUID(),
     validServiceOrder: randomUUID(),
     unauthorizedServiceOrder: randomUUID(),
@@ -487,6 +488,13 @@ async function seedDependencies(client: Client): Promise<ServiceOrderSeed> {
     [ids.contract, `CTR-ATTEST-${suffix}`, ids.supplier]
   );
   await client.query(
+    `insert into "contract_item" (
+       "id", "code", "contract_id", "line_number", "material_singular_id",
+       "contracted_quantity", "unit_price", "updated_at"
+     ) values ($1, $2, $3, 1, $4, 10, 1250.50, current_timestamp)`,
+    [ids.contractItem, `CTR-ATTEST-${suffix}-ITEM-001`, ids.contract, ids.material]
+  );
+  await client.query(
     `insert into "maintenance_request" (
        "id", "requesting_entity_id", "status", "summary", "description", "requested_at",
        "authorized_at", "authorized_by_user_id", "authorization_reason", "version",
@@ -550,11 +558,12 @@ async function seedDependencies(client: Client): Promise<ServiceOrderSeed> {
     );
     await client.query(
       `insert into "maintenance_service_order_service" (
-         "id", "service_order_id", "line_number", "description", "updated_at"
+         "id", "service_order_id", "contract_item_id", "line_number", "description",
+         "quantity", "unit_price", "total_amount", "updated_at"
        ) values
-         ($1, $2, 1, 'Manutenção preventiva', current_timestamp),
-         ($3, $2, 2, 'Troca de componente', current_timestamp)`,
-      [randomUUID(), serviceOrderId, randomUUID()]
+         ($1, $2, $3, 1, 'Manutenção preventiva', 1, 1250.50, 1250.50, current_timestamp),
+         ($4, $2, $3, 2, 'Troca de componente', 2, 1250.50, 2501.00, current_timestamp)`,
+      [randomUUID(), serviceOrderId, ids.contractItem, randomUUID()]
     );
   }
 

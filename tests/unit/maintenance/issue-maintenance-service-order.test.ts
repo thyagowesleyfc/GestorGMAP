@@ -13,7 +13,10 @@ const baseInput: IssueMaintenanceServiceOrderInput = {
   entityId: " entity-1 ",
   code: " os-001 ",
   patrimonyIds: [" patrimony-1 ", "patrimony-2"],
-  services: [{ description: " Manutenção preventiva " }, { description: " Troca de componente " }],
+  services: [
+    { description: " Manutenção preventiva ", contractItemId: " item-1 ", quantity: 1 },
+    { description: " Troca de componente ", contractItemId: "item-2", quantity: 2 }
+  ],
   issuedAt: new Date("2026-11-11T12:00:00.000Z"),
   actorUserId: " user-1 ",
   teamContext: " Manutenção ",
@@ -52,7 +55,10 @@ describe("issue maintenance service order", () => {
       entityId: "entity-1",
       code: "OS-001",
       patrimonyIds: ["patrimony-1", "patrimony-2"],
-      services: [{ description: "Manutenção preventiva" }, { description: "Troca de componente" }],
+      services: [
+        { description: "Manutenção preventiva", contractItemId: "item-1", quantity: 1 },
+        { description: "Troca de componente", contractItemId: "item-2", quantity: 2 }
+      ],
       issuedAt: baseInput.issuedAt,
       actorUserId: "user-1",
       teamContext: "Manutenção",
@@ -69,7 +75,14 @@ describe("issue maintenance service order", () => {
     const input =
       _field === "patrimony targets"
         ? { ...baseInput, patrimonyIds: value as string[] }
-        : { ...baseInput, services: value as Array<{ description: string }> };
+        : {
+            ...baseInput,
+            services: value as Array<{
+              description: string;
+              contractItemId: string;
+              quantity: number;
+            }>
+          };
 
     await expect(useCase.execute(input)).resolves.toMatchObject({ ok: false, reason });
     expect(issuer.issue).not.toHaveBeenCalled();
@@ -79,7 +92,10 @@ describe("issue maintenance service order", () => {
     const { issuer, useCase } = createUseCase(unusedResult);
 
     await expect(
-      useCase.execute({ ...baseInput, services: [{ description: " \t " }] })
+      useCase.execute({
+        ...baseInput,
+        services: [{ description: " \t ", contractItemId: "item-1", quantity: 1 }]
+      })
     ).resolves.toMatchObject({
       ok: false,
       reason: "INVALID_SERVICE_DESCRIPTION"

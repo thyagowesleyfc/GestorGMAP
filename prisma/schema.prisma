@@ -62,6 +62,7 @@ enum ContractBalanceMovementType {
   AJUSTE
   COMPROMETIMENTO_OF
   CANCELAMENTO_OF
+  COMPROMETIMENTO_OS
 }
 
 enum SupplyOrderStatus {
@@ -559,6 +560,7 @@ model ContractItem {
   balancePosition                   ContractBalancePosition?
   supplyOrderItems                  SupplyOrderItem[]
   receivingEntryItemRegularizations ReceivingEntryItemRegularization[]
+  maintenanceServiceOrderServices   MaintenanceServiceOrderService[]
 
   @@unique([contractId, lineNumber], map: "contract_item_contract_line_number_key")
   @@unique([id, contractId], map: "contract_item_id_contract_id_key")
@@ -609,21 +611,24 @@ model ContractChange {
 }
 
 model ContractBalanceMovement {
-  id               String                      @id @default(uuid()) @db.Uuid
-  code             String                      @unique @db.VarChar(80)
-  contractItemId   String                      @map("contract_item_id") @db.Uuid
-  contractChangeId String?                     @map("contract_change_id") @db.Uuid
-  type             ContractBalanceMovementType
-  quantityDelta    Int                         @map("quantity_delta")
-  amountDelta      Decimal                     @map("amount_delta") @db.Decimal(14, 2)
-  occurredAt       DateTime                    @map("occurred_at")
-  summary          String                      @db.VarChar(500)
-  createdAt        DateTime                    @default(now()) @map("created_at")
-  contractItem     ContractItem                @relation(fields: [contractItemId], references: [id], onDelete: Restrict)
-  contractChange   ContractChange?             @relation(fields: [contractChangeId], references: [id], onDelete: Restrict)
+  id                               String                          @id @default(uuid()) @db.Uuid
+  code                             String                          @unique @db.VarChar(80)
+  contractItemId                   String                          @map("contract_item_id") @db.Uuid
+  contractChangeId                 String?                         @map("contract_change_id") @db.Uuid
+  maintenanceServiceOrderServiceId String?                         @map("maintenance_service_order_service_id") @db.Uuid
+  type                             ContractBalanceMovementType
+  quantityDelta                    Int                             @map("quantity_delta")
+  amountDelta                      Decimal                         @map("amount_delta") @db.Decimal(14, 2)
+  occurredAt                       DateTime                        @map("occurred_at")
+  summary                          String                          @db.VarChar(500)
+  createdAt                        DateTime                        @default(now()) @map("created_at")
+  contractItem                     ContractItem                    @relation(fields: [contractItemId], references: [id], onDelete: Restrict)
+  contractChange                   ContractChange?                 @relation(fields: [contractChangeId], references: [id], onDelete: Restrict)
+  maintenanceServiceOrderService   MaintenanceServiceOrderService? @relation(fields: [maintenanceServiceOrderServiceId], references: [id], onDelete: Restrict)
 
   @@index([contractItemId])
   @@index([contractChangeId])
+  @@index([maintenanceServiceOrderServiceId])
   @@index([type])
   @@index([contractItemId, occurredAt], map: "contract_balance_movement_item_time_idx")
   @@map("contract_balance_movement")
@@ -1162,15 +1167,22 @@ model MaintenanceServiceOrderPatrimony {
 }
 
 model MaintenanceServiceOrderService {
-  id             String                  @id @default(uuid()) @db.Uuid
-  serviceOrderId String                  @map("service_order_id") @db.Uuid
-  lineNumber     Int                     @map("line_number")
-  description    String                  @db.VarChar(500)
-  createdAt      DateTime                @default(now()) @map("created_at")
-  updatedAt      DateTime                @updatedAt @map("updated_at")
-  serviceOrder   MaintenanceServiceOrder @relation(fields: [serviceOrderId], references: [id], onDelete: Restrict)
+  id               String                    @id @default(uuid()) @db.Uuid
+  serviceOrderId   String                    @map("service_order_id") @db.Uuid
+  contractItemId   String                    @map("contract_item_id") @db.Uuid
+  lineNumber       Int                       @map("line_number")
+  description      String                    @db.VarChar(500)
+  quantity         Int
+  unitPrice        Decimal                   @map("unit_price") @db.Decimal(14, 2)
+  totalAmount      Decimal                   @map("total_amount") @db.Decimal(14, 2)
+  createdAt        DateTime                  @default(now()) @map("created_at")
+  updatedAt        DateTime                  @updatedAt @map("updated_at")
+  serviceOrder     MaintenanceServiceOrder   @relation(fields: [serviceOrderId], references: [id], onDelete: Restrict)
+  contractItem     ContractItem              @relation(fields: [contractItemId], references: [id], onDelete: Restrict)
+  balanceMovements ContractBalanceMovement[]
 
   @@unique([serviceOrderId, lineNumber], map: "maintenance_service_order_service_line_key")
+  @@index([contractItemId])
   @@index([serviceOrderId])
   @@map("maintenance_service_order_service")
 }

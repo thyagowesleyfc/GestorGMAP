@@ -2,6 +2,8 @@ export type MaintenanceServiceOrderStatus = "EMITIDA";
 
 export type IssueMaintenanceServiceOrderServiceInput = {
   description: string;
+  contractItemId: string;
+  quantity: number;
 };
 
 export type IssueMaintenanceServiceOrderInput = {
@@ -25,7 +27,7 @@ export type IssueMaintenanceServiceOrderCommand = {
   contractId: string;
   entityId: string;
   patrimonyIds: string[];
-  services: Array<{ description: string }>;
+  services: Array<IssueMaintenanceServiceOrderServiceInput>;
   issuedAt: Date;
   actorUserId: string;
   teamContext: string;
@@ -43,6 +45,8 @@ export type IssueMaintenanceServiceOrderFailureReason =
   | "DUPLICATE_PATRIMONY_TARGET"
   | "EMPTY_SERVICES"
   | "INVALID_SERVICE_DESCRIPTION"
+  | "INVALID_CONTRACT_ITEM_ID"
+  | "INVALID_SERVICE_QUANTITY"
   | "INVALID_ISSUED_AT"
   | "INVALID_ACTOR_USER_ID"
   | "INVALID_TEAM_CONTEXT"
@@ -53,6 +57,10 @@ export type IssueMaintenanceServiceOrderFailureReason =
   | "ENTITY_NOT_REQUESTING_ENTITY"
   | "CONTRACT_NOT_FOUND"
   | "CONTRACT_NOT_APPLICABLE"
+  | "CONTRACT_ITEM_NOT_FOUND"
+  | "CONTRACT_ITEM_BALANCE_NOT_FOUND"
+  | "CONTRACT_ITEM_CONTRACT_MISMATCH"
+  | "INSUFFICIENT_CONTRACT_BALANCE"
   | "PATRIMONY_TARGET_NOT_LINKED"
   | "PATRIMONY_STRATEGY_NOT_DEFINED"
   | "PATRIMONY_STRATEGY_CONTRACT_MISMATCH"
@@ -77,6 +85,7 @@ export type IssueMaintenanceServiceOrderResult =
       contractId?: string;
       entityId?: string;
       patrimonyId?: string;
+      contractItemId?: string;
     };
 
 export type MaintenanceServiceOrderIssuer = {
@@ -128,7 +137,9 @@ export class IssueMaintenanceServiceOrder {
       return { ok: false, reason: "EMPTY_SERVICES" };
     }
     const services = input.services.map((service) => ({
-      description: service.description.trim()
+      description: service.description.trim(),
+      contractItemId: service.contractItemId.trim(),
+      quantity: service.quantity
     }));
     if (
       services.some(
@@ -136,6 +147,12 @@ export class IssueMaintenanceServiceOrder {
       )
     ) {
       return { ok: false, reason: "INVALID_SERVICE_DESCRIPTION" };
+    }
+    if (services.some((service) => service.contractItemId.length === 0)) {
+      return { ok: false, reason: "INVALID_CONTRACT_ITEM_ID" };
+    }
+    if (services.some((service) => !Number.isInteger(service.quantity) || service.quantity <= 0)) {
+      return { ok: false, reason: "INVALID_SERVICE_QUANTITY" };
     }
 
     if (input.issuedAt !== undefined && Number.isNaN(input.issuedAt.getTime())) {

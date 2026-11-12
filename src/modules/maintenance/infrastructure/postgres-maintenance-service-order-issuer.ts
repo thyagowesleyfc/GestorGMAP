@@ -43,6 +43,22 @@ type TargetRow = {
   strategy_contract_id: string | null;
 };
 
+type LockedContractItemBalance = {
+  contract_item_id: string;
+  contract_id: string;
+  unit_price: string;
+  available_quantity: number;
+  available_amount: string;
+};
+
+type AllocatedService = {
+  description: string;
+  contractItemId: string;
+  quantity: number;
+  unitPrice: string;
+  totalAmount: string;
+};
+
 const ISSUE_MAINTENANCE_SERVICE_ORDER_COMMAND = "maintenance.issue_service_order";
 const MAINTENANCE_SERVICE_ORDER_ISSUED_EVENT = "maintenance.service_order_issued";
 const AUTHORIZED_TEAM_NAMES = ["Patrimônio"];
@@ -237,6 +253,11 @@ export class PostgresMaintenanceServiceOrderIssuer implements MaintenanceService
       }
     }
 
+    const allocation = await this.lockAndValidateContractAllocations(client, input);
+    if (!allocation.ok) {
+      return allocation;
+    }
+
     const existingCode = await client.query<{ id: string }>(
       `select "id"
          from "maintenance_service_order"
@@ -275,12 +296,52 @@ export class PostgresMaintenanceServiceOrderIssuer implements MaintenanceService
       );
     }
 
-    for (const [index, service] of input.services.entries()) {
+    for (const [index, service] of allocation.services.entries()) {
+      const serviceLineId = randomUUID();
       await client.query(
         `insert into "maintenance_service_order_service" (
-          "id", "service_order_id", "line_number", "description", "updated_at"
-        ) values ($1, $2, $3, $4, current_timestamp)`,
-        [randomUUID(), serviceOrderId, index + 1, service.description]
+          "id", "service_order_id", "contract_item_id", "line_number", "description",
+          "quantity", "unit_price", "total_amount", "updated_at"
+        ) values ($1, $2, $3, $4, $5, $6, $7, $8, current_timestamp)`,
+        [
+          serviceLineId,
+          serviceOrderId,
+          service.contractItemId,
+          index + 1,
+          service.description,
+          service.quantity,
+          service.unitPrice,
+          service.totalAmount
+        ]
+      );
+
+      await client.query(
+        `update "contract_balance_position"
+            set "committed_quantity" = "committed_quantity" + $2,
+                "available_quantity" = "available_quantity" - $2,
+                "committed_amount" = "committed_amount" + $3,
+                "available_amount" = "available_amount" - $3,
+                "version" = "version" + 1,
+                "updated_at" = current_timestamp
+          where "contract_item_id" = $1`,
+        [service.contractItemId, service.quantity, service.totalAmount]
+      );
+
+      await client.query(
+        `insert into "contract_balance_movement" (
+          "id", "code", "contract_item_id", "maintenance_service_order_service_id",
+          "type", "quantity_delta", "amount_delta", "occurred_at", "summary"
+        ) values ($1, $2, $3, $4, 'COMPROMETIMENTO_OS', $5, $6, $7, $8)`,
+        [
+          randomUUID(),
+          `${input.code}-OS-CM-${(index + 1).toString().padStart(3, "0")}`,
+          service.contractItemId,
+          serviceLineId,
+          -service.quantity,
+          negateDecimal(service.totalAmount),
+          input.issuedAt,
+          `Comprometimento da OS ${input.code}, linha ${index + 1}`
+        ]
       );
     }
 
@@ -302,7 +363,7 @@ export class PostgresMaintenanceServiceOrderIssuer implements MaintenanceService
       issuedAt: input.issuedAt,
       issuedByUserId: input.actorUserId,
       patrimonyIds: input.patrimonyIds,
-      services: input.services,
+      services: allocation.services,
       correlationId: input.correlationId
     };
     await client.query(
@@ -347,6 +408,104 @@ export class PostgresMaintenanceServiceOrderIssuer implements MaintenanceService
       patrimonyIds: input.patrimonyIds,
       serviceCount: input.services.length,
       status: "EMITIDA"
+    };
+  }
+
+  private async lockAndValidateContractAllocations(
+    client: PoolClient,
+    input: IssueMaintenanceServiceOrderCommand
+  ): Promise<
+    | { ok: true; services: AllocatedService[] }
+    | {
+        ok: false;
+        reason: IssueMaintenanceServiceOrderFailureReason;
+        contractId?: string;
+        contractItemId?: string;
+      }
+  > {
+    const quantitiesByContractItem = new Map<string, number>();
+    for (const service of input.services) {
+      quantitiesByContractItem.set(
+        service.contractItemId,
+        (quantitiesByContractItem.get(service.contractItemId) ?? 0) + service.quantity
+      );
+    }
+    const contractItemIds = [...quantitiesByContractItem.keys()].sort();
+    const lockedBalances = await client.query<LockedContractItemBalance>(
+      `select ci."id" as "contract_item_id",
+              ci."contract_id",
+              ci."unit_price"::text,
+              cbp."available_quantity",
+              cbp."available_amount"::text
+         from "contract_item" ci
+         join "contract_balance_position" cbp on cbp."contract_item_id" = ci."id"
+        where ci."id" = any($1::uuid[])
+        order by ci."id"
+        for update of ci, cbp`,
+      [contractItemIds]
+    );
+
+    if (lockedBalances.rows.length !== contractItemIds.length) {
+      const existingItems = await client.query<{ id: string }>(
+        `select "id"
+           from "contract_item"
+          where "id" = any($1::uuid[])`,
+        [contractItemIds]
+      );
+      const existingIds = new Set(existingItems.rows.map((item) => item.id));
+      const missingItemId = contractItemIds.find((id) => !existingIds.has(id));
+      if (missingItemId !== undefined) {
+        return { ok: false, reason: "CONTRACT_ITEM_NOT_FOUND", contractItemId: missingItemId };
+      }
+      const missingBalanceId = contractItemIds.find(
+        (id) => !lockedBalances.rows.some((row) => row.contract_item_id === id)
+      );
+      return {
+        ok: false,
+        reason: "CONTRACT_ITEM_BALANCE_NOT_FOUND",
+        contractItemId: missingBalanceId
+      };
+    }
+
+    const balancesByItem = new Map(
+      lockedBalances.rows.map((balance) => [balance.contract_item_id, balance])
+    );
+    for (const contractItemId of contractItemIds) {
+      const balance = balancesByItem.get(contractItemId);
+      if (balance === undefined) {
+        return { ok: false, reason: "CONTRACT_ITEM_BALANCE_NOT_FOUND", contractItemId };
+      }
+      if (balance.contract_id !== input.contractId) {
+        return { ok: false, reason: "CONTRACT_ITEM_CONTRACT_MISMATCH", contractItemId };
+      }
+      const requestedQuantity = quantitiesByContractItem.get(contractItemId) ?? 0;
+      const requestedAmount = decimalToCents(balance.unit_price) * BigInt(requestedQuantity);
+      if (
+        balance.available_quantity < requestedQuantity ||
+        decimalToCents(balance.available_amount) < requestedAmount
+      ) {
+        return { ok: false, reason: "INSUFFICIENT_CONTRACT_BALANCE", contractItemId };
+      }
+    }
+
+    return {
+      ok: true,
+      services: input.services.map((service) => {
+        const balance = balancesByItem.get(service.contractItemId);
+        if (balance === undefined) {
+          throw new Error("Locked contract item balance disappeared during OS emission.");
+        }
+        const totalAmount = centsToDecimal(
+          decimalToCents(balance.unit_price) * BigInt(service.quantity)
+        );
+        return {
+          description: service.description,
+          contractItemId: service.contractItemId,
+          quantity: service.quantity,
+          unitPrice: balance.unit_price,
+          totalAmount
+        };
+      })
     };
   }
 
@@ -444,6 +603,8 @@ function isFailureReason(value: unknown): value is IssueMaintenanceServiceOrderF
       "DUPLICATE_PATRIMONY_TARGET",
       "EMPTY_SERVICES",
       "INVALID_SERVICE_DESCRIPTION",
+      "INVALID_CONTRACT_ITEM_ID",
+      "INVALID_SERVICE_QUANTITY",
       "INVALID_ISSUED_AT",
       "INVALID_ACTOR_USER_ID",
       "INVALID_TEAM_CONTEXT",
@@ -454,10 +615,36 @@ function isFailureReason(value: unknown): value is IssueMaintenanceServiceOrderF
       "ENTITY_NOT_REQUESTING_ENTITY",
       "CONTRACT_NOT_FOUND",
       "CONTRACT_NOT_APPLICABLE",
+      "CONTRACT_ITEM_NOT_FOUND",
+      "CONTRACT_ITEM_BALANCE_NOT_FOUND",
+      "CONTRACT_ITEM_CONTRACT_MISMATCH",
+      "INSUFFICIENT_CONTRACT_BALANCE",
       "PATRIMONY_TARGET_NOT_LINKED",
       "PATRIMONY_STRATEGY_NOT_DEFINED",
       "PATRIMONY_STRATEGY_CONTRACT_MISMATCH",
       "ACTOR_NOT_AUTHORIZED"
     ]).has(value)
   );
+}
+
+function decimalToCents(value: string): bigint {
+  const sign = value.startsWith("-") ? -1n : 1n;
+  const unsignedValue = value.replace(/^-/, "");
+  const [units, fraction = ""] = unsignedValue.split(".");
+  const cents = `${fraction}00`.slice(0, 2);
+
+  return sign * (BigInt(units) * 100n + BigInt(cents));
+}
+
+function centsToDecimal(value: bigint): string {
+  const sign = value < 0n ? "-" : "";
+  const absoluteValue = value < 0n ? -value : value;
+  const units = absoluteValue / 100n;
+  const cents = (absoluteValue % 100n).toString().padStart(2, "0");
+
+  return `${sign}${units.toString()}.${cents}`;
+}
+
+function negateDecimal(value: string): string {
+  return centsToDecimal(-decimalToCents(value));
 }

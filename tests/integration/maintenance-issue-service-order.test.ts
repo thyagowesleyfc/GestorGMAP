@@ -26,7 +26,7 @@ async function runPrismaMigrateDeploy(databaseUrl: string): Promise<void> {
 }
 
 describe("emissão de Ordem de Serviço de manutenção", () => {
-  it("emite uma OS com vários alvos e serviços, com idempotência, atomicidade e efeitos isolados", async () => {
+  it("emite uma OS com vários alvos e serviços, comprometendo saldo contratual por linha", async () => {
     const postgres = await new PostgreSqlContainer("postgres:17-alpine").start();
     const connectionString = postgres.getConnectionUri();
     const client = new Client({ connectionString });
@@ -74,7 +74,15 @@ describe("emissão de Ordem de Serviço de manutenção", () => {
       expect(afterIssue.serviceCount).toBe(initial.serviceCount + validCommand.services.length);
       expect(afterIssue.auditCount).toBe(initial.auditCount + 1);
       expect(afterIssue.outboxCount).toBe(initial.outboxCount + 1);
-      expect(afterIssue.contractBalance).toEqual(initial.contractBalance);
+      expect(afterIssue.contractBalance).toEqual({
+        total_quantity: 20,
+        committed_quantity: 7,
+        available_quantity: 13,
+        total_amount: "25010.00",
+        committed_amount: "8753.50",
+        available_amount: "16256.50",
+        version: 3
+      });
       expect(afterIssue.patrimonies).toEqual(initial.patrimonies);
       expect(afterIssue.patrimonyMovementCount).toBe(initial.patrimonyMovementCount);
       expect(afterIssue.patrimonyWriteOffCount).toBe(initial.patrimonyWriteOffCount);
@@ -195,7 +203,18 @@ function serviceOrderCommand(
     contractId: seed.activeContractId,
     entityId: seed.entityId,
     patrimonyIds: seed.validPatrimonyIds,
-    services: [{ description: "Manutenção preventiva" }, { description: "Troca de componente" }],
+    services: [
+      {
+        description: "Manutenção preventiva",
+        contractItemId: seed.contractItemId,
+        quantity: 1
+      },
+      {
+        description: "Troca de componente",
+        contractItemId: seed.contractItemId,
+        quantity: 2
+      }
+    ],
     issuedAt: new Date("2026-11-11T14:00:00.000Z"),
     actorUserId: seed.compatibleGreUserId,
     teamContext: "Patrimônio",
@@ -297,8 +316,16 @@ async function expectServiceOrder(
     [...command.patrimonyIds].sort()
   );
 
-  const services = await client.query<{ line_number: number; description: string }>(
-    `select "line_number", "description"
+  const services = await client.query<{
+    line_number: number;
+    description: string;
+    contract_item_id: string;
+    quantity: number;
+    unit_price: string;
+    total_amount: string;
+  }>(
+    `select "line_number", "description", "contract_item_id", "quantity",
+            "unit_price"::text as "unit_price", "total_amount"::text as "total_amount"
        from "maintenance_service_order_service"
       where "service_order_id" = $1
       order by "line_number"`,
@@ -307,7 +334,11 @@ async function expectServiceOrder(
   expect(services.rows).toEqual(
     command.services.map((service, index) => ({
       line_number: index + 1,
-      description: service.description
+      description: service.description,
+      contract_item_id: service.contractItemId,
+      quantity: service.quantity,
+      unit_price: "1250.50",
+      total_amount: (service.quantity * 1250.5).toFixed(2)
     }))
   );
 }
