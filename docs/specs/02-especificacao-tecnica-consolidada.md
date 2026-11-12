@@ -237,6 +237,36 @@ Posição atual
 
 Posição nunca substitui o histórico que a originou.
 
+### Alocação contratual da OS e glosa
+
+Linhas de serviço de uma OS de `CONTRATO_SERVICO` devem referenciar um Item
+Contratual do mesmo Contrato e congelar, na emissão, descrição, quantidade,
+preço unitário e valor total. Uma OS pode ter várias linhas e vários Itens
+Contratuais; não há rateio implícito por descrição ou por Patrimônio.
+
+A emissão da OS deve, na mesma transação, bloquear as posições de saldo dos
+Itens Contratuais em ordem determinística, validar disponibilidade para todas
+as linhas e registrar o comprometimento de quantidade e valor. Falha em uma
+linha rejeita a operação inteira. O saldo disponível e comprometido não pode
+ser editado diretamente: a posição é atualizada junto com um ledger imutável
+de MovimentoSaldoContratual.
+
+O Command de glosa recebe linhas da OS e quantidade glosada por linha. Para
+cada linha, a quantidade deve ser positiva e não pode exceder a quantidade
+ainda comprometida. O valor da restituição é derivado do preço unitário
+congelado da linha, nunca informado livremente pelo cliente. Na mesma
+transação, com os mesmos locks, a quantidade e o valor retornam do saldo
+comprometido para o saldo disponível, e um movimento compensatório de glosa
+referencia a OS e a linha correspondente. A soma dos valores das linhas é o
+valor global restituído ao Contrato.
+
+Glosa parcial e total são transições explícitas e finais da OS. O fato de
+execução e o ateste não são apagados. Uma OS possui uma única liquidação de
+glosa; correção posterior exige fluxo formal próprio. O Command deve ser
+idempotente, registrar auditoria e Outbox e rejeitar duplicação, excesso de
+quantidade, Item Contratual de outro Contrato ou tentativa de glosar uma linha
+já liquidada.
+
 ---
 
 ## 10. Domain Events, Outbox e Jobs
@@ -490,6 +520,22 @@ estratégia, referência ao Contrato de Serviço, justificativa, usuário/data d
 definição e `correlation_id`. `CONTRATO_SERVICO` exige referência ao contrato
 aplicável. Rejeição não pertence ao tipo da estratégia: é transição própria da
 Solicitação para `REJEITADA`.
+
+Uma OS emitida para `CONTRATO_SERVICO` deve congelar a alocação de cada serviço
+em um Item Contratual do contrato informado, inclusive quantidade, preço
+unitário e valor total. A alocação pode envolver vários Itens Contratuais,
+mas não pode cruzar Contratos. A emissão compromete o saldo de todas as linhas
+atomicamente; a glosa posterior restitui quantidade e valor somente das linhas
+glosadas, calculando o valor pela quantidade e pelo preço congelado.
+
+Depois de o prestador registrar a execução, a Entidade deve confirmar
+funcionalmente o atendimento. Somente então Patrimônio pode atestar ou
+registrar a liquidação única de glosa da OS.
+
+O ledger deve distinguir comprometimento da OS de comprometimento de OF. A
+restituição de glosa deve possuir movimento próprio, manter referência à OS e
+à linha de serviço, atualizar a posição de saldo na mesma transação e nunca
+ser implementada como ajuste genérico sem origem.
 
 O Command de definição exige Solicitação em `EM_ANALISE` e Patrimônios-alvo já
 vinculados. Todos os alvos recebidos devem ser validados antes da gravação; a

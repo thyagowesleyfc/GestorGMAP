@@ -244,7 +244,17 @@ Fechar manutenção interna/externa, garantia e efeitos contratuais.
 
 ### Gate
 
-OS emitida é imutável; glosa restitui apenas saldo correspondente; irrecuperável não baixa automaticamente.
+OS emitida é imutável. Na estratégia `CONTRATO_SERVICO`, cada serviço da OS é
+alocado a um Item Contratual do mesmo Contrato, com quantidade, preço unitário
+e valor total congelados na emissão. A emissão compromete atomicamente todas
+as linhas no saldo contratual; qualquer insuficiência rejeita a OS inteira.
+
+Glosa parcial ou total é registrada por linha de serviço, restitui a
+quantidade glosada e o valor correspondente ao preço unitário congelado,
+somando o efeito no saldo global do Contrato. A execução e o ateste são
+preservados. A Entidade confirma funcionalmente antes do ateste ou da glosa;
+uma OS possui uma única liquidação de glosa, e correções posteriores exigem
+fluxo formal. Patrimônio irrecuperável não baixa automaticamente.
 
 Na Solicitação de Manutenção, autorização da Gerência é gate de negócio e não
 se confunde com ciência. A definição da estratégia e o vínculo de um ou mais

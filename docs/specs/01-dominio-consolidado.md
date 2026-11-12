@@ -327,6 +327,39 @@ Contratos prepara
 → Contratos efetiva
 ```
 
+### Contrato de Serviço e alocação da OS
+
+Quando a estratégia de atendimento for `CONTRATO_SERVICO`, a OS deve alocar
+seus serviços em um ou mais Itens Contratuais do mesmo Contrato de Serviço.
+Uma linha de serviço da OS mantém, no mínimo:
+
+- referência ao Item Contratual;
+- descrição operacional do serviço;
+- quantidade alocada;
+- preço unitário congelado na emissão;
+- valor total congelado na emissão.
+
+Uma OS pode conter vários serviços e vários Itens Contratuais. A alocação é
+por linha de serviço, não por OS agregada, e todos os Itens Contratuais devem
+pertencer ao Contrato de Serviço informado na OS. A emissão compromete
+atomicamente quantidade e valor de cada linha no saldo contratual, com
+lock das posições de saldo e sem movimentar Estoque ou Patrimônio.
+
+Após a execução, a Entidade confirma funcionalmente e o Patrimônio pode
+atestar ou registrar glosa. A glosa é informada por linha de serviço e não
+pode exceder a quantidade ainda comprometida naquela linha. A quantidade
+glosada retorna ao saldo disponível do Item Contratual; o valor restituído é
+calculado pela quantidade glosada multiplicada pelo preço unitário congelado
+da linha. O valor restituído ao Contrato é a soma dos valores das linhas
+glosadas.
+
+Glosa parcial mantém o saldo não glosado comprometido e leva a OS para
+`CONCLUIDA_COM_GLOSA_PARCIAL`. Glosa total restitui todas as quantidades
+comprometidas e leva a OS para `CONCLUIDA_COM_GLOSA_TOTAL`. A execução
+alegada permanece preservada. A glosa é uma liquidação única da OS; correção
+de uma glosa já efetivada exige fluxo formal próprio. Não há edição direta do
+ledger ou do saldo.
+
 ---
 
 ## 9. RECEIVING — Entrada e Regularização
@@ -626,7 +659,10 @@ CONCLUIDA_COM_GLOSA_TOTAL
 CANCELADA
 ```
 
-Glosa pode ser parcial/total, preserva a execução alegada e restitui apenas o saldo correspondente.
+Glosa pode ser parcial/total, preserva a execução alegada e restitui apenas o
+saldo correspondente às linhas da OS. A restituição ocorre em quantidade e
+valor: quantidade glosada multiplicada pelo preço unitário congelado da linha,
+somando-se o resultado no valor global restituído do Contrato.
 
 Patrimônio irrecuperável não é automaticamente baixado.
 
@@ -1065,7 +1101,8 @@ Integration Events futuros serão derivados dos eventos internos quando necessá
 9. Movimentações exigem fluxo formal.
 10. Operação contratual não excede saldo disponível.
 11. OF e OS emitidas são imutáveis; correção exige fluxo formal.
-12. Glosa restitui apenas saldo correspondente.
+12. Uma OS pode alocar vários serviços e Itens Contratuais do mesmo Contrato;
+    a glosa é rateada por linha e restitui quantidade e o valor correspondente.
 13. Patrimônio irrecuperável não é baixado automaticamente.
 14. Substituição integral em garantia cria novo Patrimônio/Tombos.
 15. Fiscalização constata; Patrimônio regulariza.

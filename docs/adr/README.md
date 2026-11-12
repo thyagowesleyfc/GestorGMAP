@@ -16,3 +16,4 @@ A fonte de verdade continua em `docs/specs`. Estes ADRs apenas estabilizam as de
 - [ADR-008 - Infraestrutura self-hosted com 3 VPS + Coolify/Traefik](./008-infraestrutura-self-hosted-3-vps.md)
 - [ADR-009 - PostgreSQL primary/standby com failover manual](./009-postgresql-primary-standby-failover-manual.md)
 - [ADR-010 - Observabilidade Grafana/Loki/Prometheus/Alloy](./010-observabilidade-grafana-loki-prometheus-alloy.md)
+- [ADR-011 - Alocação contratual e glosa por linha da OS](./011-alocacao-contratual-e-glosa-da-os.md)
