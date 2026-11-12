@@ -259,14 +259,14 @@ model Person {
 }
 
 model UserAccount {
-  id                                  String                                @id @default(uuid()) @db.Uuid
-  personId                            String                                @unique @map("person_id") @db.Uuid
-  loginIdentifier                     String                                @unique @map("login_identifier") @db.VarChar(160)
-  status                              UserStatus                            @default(ACTIVE)
-  isTechnicalSuperuser                Boolean                               @default(false) @map("is_technical_superuser")
-  createdAt                           DateTime                              @default(now()) @map("created_at")
-  updatedAt                           DateTime                              @updatedAt @map("updated_at")
-  person                              Person                                @relation(fields: [personId], references: [id], onDelete: Restrict)
+  id                                  String                                      @id @default(uuid()) @db.Uuid
+  personId                            String                                      @unique @map("person_id") @db.Uuid
+  loginIdentifier                     String                                      @unique @map("login_identifier") @db.VarChar(160)
+  status                              UserStatus                                  @default(ACTIVE)
+  isTechnicalSuperuser                Boolean                                     @default(false) @map("is_technical_superuser")
+  createdAt                           DateTime                                    @default(now()) @map("created_at")
+  updatedAt                           DateTime                                    @updatedAt @map("updated_at")
+  person                              Person                                      @relation(fields: [personId], references: [id], onDelete: Restrict)
   memberships                         TeamMembership[]
   passwordCredential                  PasswordCredential?
   passwordRecoveries                  PasswordRecoveryRequest[]
@@ -279,11 +279,12 @@ model UserAccount {
   logisticsRecollectionsRequested     LogisticsRecollection[]
   MaterialRequest                     MaterialRequest[]
   maintenanceRequestsRegistered       MaintenanceRequest[]
-  maintenanceRequestsAuthorized       MaintenanceRequest[]                  @relation("MaintenanceRequestAuthorizedBy")
-  maintenanceRequestPatrimonyTargets  MaintenanceRequestPatrimonyTarget[]   @relation("MaintenanceRequestPatrimonyTargetLinkedBy")
-  maintenanceRequestStrategiesDefined MaintenanceRequestPatrimonyStrategy[] @relation("MaintenanceRequestPatrimonyStrategyDefinedBy")
-  maintenanceRequestReportsIssued     MaintenanceRequestPatrimonyReport[]   @relation("MaintenanceRequestPatrimonyReportIssuedBy")
-  maintenanceServiceOrdersIssued      MaintenanceServiceOrder[]             @relation("MaintenanceServiceOrderIssuedBy")
+  maintenanceRequestsAuthorized       MaintenanceRequest[]                        @relation("MaintenanceRequestAuthorizedBy")
+  maintenanceRequestPatrimonyTargets  MaintenanceRequestPatrimonyTarget[]         @relation("MaintenanceRequestPatrimonyTargetLinkedBy")
+  maintenanceRequestStrategiesDefined MaintenanceRequestPatrimonyStrategy[]       @relation("MaintenanceRequestPatrimonyStrategyDefinedBy")
+  maintenanceRequestReportsIssued     MaintenanceRequestPatrimonyReport[]         @relation("MaintenanceRequestPatrimonyReportIssuedBy")
+  maintenanceServiceOrdersIssued      MaintenanceServiceOrder[]                   @relation("MaintenanceServiceOrderIssuedBy")
+  serviceOrderEntityConfirmations     MaintenanceServiceOrderEntityConfirmation[] @relation("MaintenanceServiceOrderEntityConfirmationRegisteredBy")
 
   @@index([personId])
   @@map("user_account")
@@ -397,31 +398,32 @@ model Municipality {
 }
 
 model Entity {
-  id                              String                    @id @default(uuid()) @db.Uuid
-  code                            String                    @unique @db.VarChar(64)
-  name                            String                    @db.VarChar(180)
-  entityType                      EntityType                @map("entity_type")
-  greId                           String                    @map("gre_id") @db.Uuid
-  municipalityId                  String?                   @map("municipality_id") @db.Uuid
-  parentEntityId                  String?                   @map("parent_entity_id") @db.Uuid
-  active                          Boolean                   @default(true)
-  createdAt                       DateTime                  @default(now()) @map("created_at")
-  updatedAt                       DateTime                  @updatedAt @map("updated_at")
-  gre                             Gre                       @relation(fields: [greId], references: [id], onDelete: Restrict)
-  municipality                    Municipality?             @relation(fields: [municipalityId], references: [id], onDelete: Restrict)
-  parentEntity                    Entity?                   @relation("EntityHierarchy", fields: [parentEntityId], references: [id], onDelete: Restrict)
-  childEntities                   Entity[]                  @relation("EntityHierarchy")
+  id                              String                                      @id @default(uuid()) @db.Uuid
+  code                            String                                      @unique @db.VarChar(64)
+  name                            String                                      @db.VarChar(180)
+  entityType                      EntityType                                  @map("entity_type")
+  greId                           String                                      @map("gre_id") @db.Uuid
+  municipalityId                  String?                                     @map("municipality_id") @db.Uuid
+  parentEntityId                  String?                                     @map("parent_entity_id") @db.Uuid
+  active                          Boolean                                     @default(true)
+  createdAt                       DateTime                                    @default(now()) @map("created_at")
+  updatedAt                       DateTime                                    @updatedAt @map("updated_at")
+  gre                             Gre                                         @relation(fields: [greId], references: [id], onDelete: Restrict)
+  municipality                    Municipality?                               @relation(fields: [municipalityId], references: [id], onDelete: Restrict)
+  parentEntity                    Entity?                                     @relation("EntityHierarchy", fields: [parentEntityId], references: [id], onDelete: Restrict)
+  childEntities                   Entity[]                                    @relation("EntityHierarchy")
   receivingEntries                ReceivingEntry[]
   stockPositions                  StockPosition[]
   patrimonies                     Patrimony[]
-  patrimonyMovementsFrom          PatrimonyMovement[]       @relation("PatrimonyMovementFromEntity")
-  patrimonyMovementsTo            PatrimonyMovement[]       @relation("PatrimonyMovementToEntity")
+  patrimonyMovementsFrom          PatrimonyMovement[]                         @relation("PatrimonyMovementFromEntity")
+  patrimonyMovementsTo            PatrimonyMovement[]                         @relation("PatrimonyMovementToEntity")
   MaterialRequest                 MaterialRequest[]
   logisticsShipments              LogisticsShipment[]
-  logisticsRecollectionsRequested LogisticsRecollection[]   @relation("LogisticsRecollectionRequestingEntity")
-  logisticsRecollectionsReceiving LogisticsRecollection[]   @relation("LogisticsRecollectionReceivingEntity")
+  logisticsRecollectionsRequested LogisticsRecollection[]                     @relation("LogisticsRecollectionRequestingEntity")
+  logisticsRecollectionsReceiving LogisticsRecollection[]                     @relation("LogisticsRecollectionReceivingEntity")
   maintenanceRequests             MaintenanceRequest[]
   maintenanceServiceOrders        MaintenanceServiceOrder[]
+  serviceOrderEntityConfirmations MaintenanceServiceOrderEntityConfirmation[]
 
   @@index([entityType])
   @@index([greId])
@@ -1125,25 +1127,27 @@ model MaintenanceRequestPatrimonyReport {
 }
 
 model MaintenanceServiceOrder {
-  id                   String                             @id @default(uuid()) @db.Uuid
-  code                 String                             @unique @db.VarChar(64)
-  maintenanceRequestId String                             @map("maintenance_request_id") @db.Uuid
-  contractId           String                             @map("contract_id") @db.Uuid
-  entityId             String                             @map("entity_id") @db.Uuid
-  status               MaintenanceServiceOrderStatus      @default(EMITIDA)
-  issuedAt             DateTime                           @map("issued_at")
-  issuedByUserId       String                             @map("issued_by_user_id") @db.Uuid
-  correlationId        String                             @map("correlation_id") @db.VarChar(160)
-  createdAt            DateTime                           @default(now()) @map("created_at")
-  updatedAt            DateTime                           @updatedAt @map("updated_at")
-  maintenanceRequest   MaintenanceRequest                 @relation(fields: [maintenanceRequestId], references: [id], onDelete: Restrict)
-  contract             Contract                           @relation(fields: [contractId], references: [id], onDelete: Restrict)
-  entity               Entity                             @relation(fields: [entityId], references: [id], onDelete: Restrict)
-  issuedByUser         UserAccount                        @relation("MaintenanceServiceOrderIssuedBy", fields: [issuedByUserId], references: [id], onDelete: Restrict)
+  id                   String                                     @id @default(uuid()) @db.Uuid
+  code                 String                                     @unique @db.VarChar(64)
+  maintenanceRequestId String                                     @map("maintenance_request_id") @db.Uuid
+  contractId           String                                     @map("contract_id") @db.Uuid
+  entityId             String                                     @map("entity_id") @db.Uuid
+  status               MaintenanceServiceOrderStatus              @default(EMITIDA)
+  issuedAt             DateTime                                   @map("issued_at")
+  issuedByUserId       String                                     @map("issued_by_user_id") @db.Uuid
+  correlationId        String                                     @map("correlation_id") @db.VarChar(160)
+  createdAt            DateTime                                   @default(now()) @map("created_at")
+  updatedAt            DateTime                                   @updatedAt @map("updated_at")
+  maintenanceRequest   MaintenanceRequest                         @relation(fields: [maintenanceRequestId], references: [id], onDelete: Restrict)
+  contract             Contract                                   @relation(fields: [contractId], references: [id], onDelete: Restrict)
+  entity               Entity                                     @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  issuedByUser         UserAccount                                @relation("MaintenanceServiceOrderIssuedBy", fields: [issuedByUserId], references: [id], onDelete: Restrict)
   patrimonyTargets     MaintenanceServiceOrderPatrimony[]
   services             MaintenanceServiceOrderService[]
+  entityConfirmation   MaintenanceServiceOrderEntityConfirmation?
 
   @@unique([id, maintenanceRequestId], map: "maintenance_service_order_id_request_key")
+  @@unique([id, entityId], map: "maintenance_service_order_id_entity_key")
   @@index([maintenanceRequestId])
   @@index([contractId])
   @@index([entityId])
@@ -1188,6 +1192,25 @@ model MaintenanceServiceOrderService {
   @@index([contractItemId])
   @@index([serviceOrderId])
   @@map("maintenance_service_order_service")
+}
+
+model MaintenanceServiceOrderEntityConfirmation {
+  id                 String                  @id @default(uuid()) @db.Uuid
+  serviceOrderId     String                  @unique @map("service_order_id") @db.Uuid
+  entityId           String                  @map("entity_id") @db.Uuid
+  confirmedAt        DateTime                @map("confirmed_at")
+  evidenceReference  String                  @map("evidence_reference") @db.VarChar(500)
+  registeredByUserId String                  @map("registered_by_user_id") @db.Uuid
+  correlationId      String                  @map("correlation_id") @db.VarChar(160)
+  createdAt          DateTime                @default(now()) @map("created_at")
+  serviceOrder       MaintenanceServiceOrder @relation(fields: [serviceOrderId, entityId], references: [id, entityId], onDelete: Restrict)
+  entity             Entity                  @relation(fields: [entityId], references: [id], onDelete: Restrict)
+  registeredByUser   UserAccount             @relation("MaintenanceServiceOrderEntityConfirmationRegisteredBy", fields: [registeredByUserId], references: [id], onDelete: Restrict)
+
+  @@unique([serviceOrderId, entityId], map: "maintenance_service_order_entity_key")
+  @@index([entityId])
+  @@index([registeredByUserId])
+  @@map("maintenance_service_order_entity_confirmation")
 }
 
 model LogisticsShipment {

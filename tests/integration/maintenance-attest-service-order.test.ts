@@ -565,6 +565,21 @@ async function seedDependencies(client: Client): Promise<ServiceOrderSeed> {
          ($4, $2, $3, 2, 'Troca de componente', 2, 1250.50, 2501.00, current_timestamp)`,
       [randomUUID(), serviceOrderId, ids.contractItem, randomUUID()]
     );
+    await client.query(
+      `insert into "maintenance_service_order_entity_confirmation" (
+         "id", "service_order_id", "entity_id", "confirmed_at", "evidence_reference",
+         "registered_by_user_id", "correlation_id"
+       ) values ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        randomUUID(),
+        serviceOrderId,
+        ids.entityOne,
+        new Date("2026-11-12T12:30:00.000Z"),
+        `SEI-ATTEST-${suffix}-${serviceOrderId}`,
+        ids.authorizedUser,
+        `corr-maintenance-confirmation-attest-${suffix}-${serviceOrderId}`
+      ]
+    );
   }
 
   return {

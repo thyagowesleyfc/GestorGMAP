@@ -159,10 +159,24 @@ export class PostgresMaintenanceServiceOrderGlosser implements MaintenanceServic
         serviceOrderId: input.serviceOrderId
       };
     }
-    if (serviceOrderRow.status !== "ATESTADA") {
+    if (serviceOrderRow.status !== "EXECUTADA" && serviceOrderRow.status !== "ATESTADA") {
       return {
         ok: false,
         reason: "SERVICE_ORDER_NOT_GLOSSABLE",
+        serviceOrderId: input.serviceOrderId
+      };
+    }
+
+    const confirmation = await client.query<{ id: string }>(
+      `select "id"
+         from "maintenance_service_order_entity_confirmation"
+        where "service_order_id" = $1`,
+      [input.serviceOrderId]
+    );
+    if (confirmation.rows.length === 0) {
+      return {
+        ok: false,
+        reason: "SERVICE_ORDER_WITHOUT_ENTITY_CONFIRMATION",
         serviceOrderId: input.serviceOrderId
       };
     }
@@ -508,6 +522,7 @@ function isFailureReason(value: unknown): value is GlosaMaintenanceServiceOrderF
       "IDEMPOTENCY_KEY_CONFLICT",
       "SERVICE_ORDER_NOT_FOUND",
       "SERVICE_ORDER_NOT_GLOSSABLE",
+      "SERVICE_ORDER_WITHOUT_ENTITY_CONFIRMATION",
       "SERVICE_ORDER_WITHOUT_PATRIMONY_TARGET",
       "SERVICE_ORDER_LINE_NOT_FOUND",
       "SERVICE_ORDER_LINE_ALREADY_GLOSSED",

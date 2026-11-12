@@ -369,6 +369,44 @@ describe("glosa de Ordem de Serviço", () => {
       await postgres.stop();
     }
   }, 120000);
+
+  it("permite glosa diretamente após a confirmação, sem ateste prévio", async () => {
+    const postgres = await new PostgreSqlContainer("postgres:17-alpine").start();
+    const connectionString = postgres.getConnectionUri();
+    const client = new Client({ connectionString });
+    const pool = new Pool({ connectionString, max: 4 });
+
+    try {
+      await runPrismaMigrateDeploy(connectionString);
+      await client.connect();
+      const seed = await seedScenario(client);
+      await client.query(
+        `update "maintenance_service_order"
+            set "status" = 'EXECUTADA',
+                "updated_at" = current_timestamp
+          where "id" = $1`,
+        [seed.serviceOrderId]
+      );
+      const useCase = new GlosaMaintenanceServiceOrder(
+        new PostgresMaintenanceServiceOrderGlosser(pool)
+      );
+
+      await expect(
+        useCase.execute(
+          glosaCommand(seed, [{ serviceOrderServiceId: seed.firstLineId, quantity: 1 }])
+        )
+      ).resolves.toEqual({
+        ok: true,
+        serviceOrderId: seed.serviceOrderId,
+        status: "CONCLUIDA_COM_GLOSA_PARCIAL",
+        totalGlosaAmount: "100.00"
+      });
+    } finally {
+      await pool.end().catch(() => undefined);
+      await client.end().catch(() => undefined);
+      await postgres.stop();
+    }
+  }, 120000);
 });
 
 type GlosaSeed = {
@@ -663,6 +701,21 @@ async function seedScenario(client: Client): Promise<GlosaSeed> {
        ($4, $2, $5, 2, 'Substituição', 2, 25.50, 51.00, current_timestamp)`,
     [ids.firstLine, ids.serviceOrder, ids.firstItem, ids.secondLine, ids.secondItem]
   );
+  await client.query(
+    `insert into "maintenance_service_order_entity_confirmation" (
+       "id", "service_order_id", "entity_id", "confirmed_at", "evidence_reference",
+       "registered_by_user_id", "correlation_id"
+     ) values ($1, $2, $3, $4, $5, $6, $7)`,
+    [
+      randomUUID(),
+      ids.serviceOrder,
+      ids.entity,
+      new Date("2026-11-12T12:30:00.000Z"),
+      `SEI-GLOSA-${suffix}`,
+      ids.user,
+      `corr-confirmation-glosa-${suffix}`
+    ]
+  );
 
   return {
     serviceOrderId: ids.serviceOrder,
@@ -715,6 +768,21 @@ async function insertSiblingServiceOrder(
        "quantity", "unit_price", "total_amount", "updated_at"
      ) values ($1, $2, $3, 1, 'Diagnóstico concorrente', 1, 100.00, 100.00, current_timestamp)`,
     [lineId, serviceOrderId, seed.firstContractItemId]
+  );
+  await client.query(
+    `insert into "maintenance_service_order_entity_confirmation" (
+       "id", "service_order_id", "entity_id", "confirmed_at", "evidence_reference",
+       "registered_by_user_id", "correlation_id"
+     ) values ($1, $2, $3, $4, $5, $6, $7)`,
+    [
+      randomUUID(),
+      serviceOrderId,
+      seed.entityId,
+      new Date("2026-11-12T13:45:00.000Z"),
+      `SEI-GLOSA-CONC-${suffix}`,
+      seed.actorUserId,
+      `corr-confirmation-glosa-conc-${suffix}`
+    ]
   );
 
   return { serviceOrderId, code, lineId };

@@ -148,6 +148,20 @@ export class PostgresMaintenanceServiceOrderAttester implements MaintenanceServi
       };
     }
 
+    const confirmation = await client.query<{ id: string }>(
+      `select "id"
+         from "maintenance_service_order_entity_confirmation"
+        where "service_order_id" = $1`,
+      [input.serviceOrderId]
+    );
+    if (confirmation.rows.length === 0) {
+      return {
+        ok: false,
+        reason: "SERVICE_ORDER_NOT_ATTESTABLE",
+        serviceOrderId: input.serviceOrderId
+      };
+    }
+
     const targets = await client.query<TargetGreRow>(
       `select g."code" as "gre_code"
          from "maintenance_service_order_patrimony" sop
