@@ -252,7 +252,11 @@ as linhas no saldo contratual; qualquer insuficiência rejeita a OS inteira.
 Glosa parcial ou total é registrada por linha de serviço, restitui a
 quantidade glosada e o valor correspondente ao preço unitário congelado,
 somando o efeito no saldo global do Contrato. A execução e o ateste são
-preservados. A Entidade confirma funcionalmente antes do ateste ou da glosa;
+preservados quando existentes. A Entidade confirma funcionalmente antes do
+ateste ou da glosa; essa confirmação é um fato próprio e único da OS, não um
+novo estado, e pode ser registrada por operador interno autorizado sem
+transformá-lo no responsável institucional da Entidade. A glosa pode ser
+registrada diretamente após a confirmação ou depois do ateste;
 uma OS possui uma única liquidação de glosa, e correções posteriores exigem
 fluxo formal. Patrimônio irrecuperável não baixa automaticamente.
 

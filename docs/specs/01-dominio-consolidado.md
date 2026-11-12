@@ -238,6 +238,11 @@ Entidades representam solicitantes, beneficiários, recebedores e responsáveis 
 
 A responsabilidade patrimonial pertence à **Entidade**, não ao signatário. A pessoa que assina Termo/Requisição permanece como evidência documental/auditoria.
 
+O responsável institucional da Entidade e o Usuário do GMAP são conceitos
+distintos. O responsável só será cadastrado como Usuário quando houver
+necessidade real de autenticação e operação no GMAP; isso não altera a
+responsabilidade patrimonial institucional da Entidade.
+
 A hierarquia atual é fonte para consolidações. Histórico anterior à entrada no GMAP não é reconstruído sem evidência confiável.
 
 ---
@@ -345,8 +350,11 @@ pertencer ao Contrato de Serviço informado na OS. A emissão compromete
 atomicamente quantidade e valor de cada linha no saldo contratual, com
 lock das posições de saldo e sem movimentar Estoque ou Patrimônio.
 
-Após a execução, a Entidade confirma funcionalmente e o Patrimônio pode
-atestar ou registrar glosa. A glosa é informada por linha de serviço e não
+Após a execução, a Entidade confirma funcionalmente e essa confirmação é
+registrada como fato próprio da OS, sem criar novo estado da OS. O registro
+pode ser realizado por operador interno autorizado, que não se torna o
+responsável institucional da Entidade. Somente depois dessa confirmação o
+Patrimônio pode atestar ou registrar glosa. A glosa é informada por linha de serviço e não
 pode exceder a quantidade ainda comprometida naquela linha. A quantidade
 glosada retorna ao saldo disponível do Item Contratual; o valor restituído é
 calculado pela quantidade glosada multiplicada pelo preço unitário congelado
@@ -636,6 +644,7 @@ Patrimônio prepara
 → prestador executa
 → Patrimônio acompanha
 → Entidade confirma funcionalmente
+→ operador interno registra a confirmação como fato da Entidade
 → Patrimônio atesta ou solicita glosa
 → Contratos aplica efeitos contratuais
 ```
@@ -659,7 +668,8 @@ CONCLUIDA_COM_GLOSA_TOTAL
 CANCELADA
 ```
 
-Glosa pode ser parcial/total, preserva a execução alegada e restitui apenas o
+Glosa pode ser parcial/total, pode ser registrada diretamente após a confirmação
+ou depois do ateste, preserva os fatos já existentes e restitui apenas o
 saldo correspondente às linhas da OS. A restituição ocorre em quantidade e
 valor: quantidade glosada multiplicada pelo preço unitário congelado da linha,
 somando-se o resultado no valor global restituído do Contrato.
@@ -772,6 +782,11 @@ Sem usuários inicialmente:
 - CERME;
 - Gestor/Fiscal legal de Contrato;
 - órgãos externos.
+
+A ausência inicial de Usuários responsáveis por Entidades não impede o registro
+da confirmação funcional por operador interno autorizado com base na evidência
+da manifestação institucional. O operador, o signatário e o responsável
+institucional não são automaticamente a mesma pessoa.
 
 ### Membership
 

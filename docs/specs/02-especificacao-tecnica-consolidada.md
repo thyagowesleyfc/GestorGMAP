@@ -529,8 +529,17 @@ atomicamente; a glosa posterior restitui quantidade e valor somente das linhas
 glosadas, calculando o valor pela quantidade e pelo preço congelado.
 
 Depois de o prestador registrar a execução, a Entidade deve confirmar
-funcionalmente o atendimento. Somente então Patrimônio pode atestar ou
-registrar a liquidação única de glosa da OS.
+funcionalmente o atendimento. Essa confirmação deve ser persistida como fato
+próprio, único e imutável por OS, associado à mesma Entidade da OS, com data,
+referência da evidência, operador interno que registrou o fato e
+`correlation_id`. O operador interno registra a manifestação institucional,
+mas não se torna o responsável da Entidade nem substitui sua responsabilidade
+patrimonial. O responsável institucional só precisa ser Usuário do GMAP se
+houver necessidade real de autenticação e operação no sistema.
+
+Somente depois da confirmação Patrimônio pode atestar ou registrar a
+liquidação única de glosa. A glosa pode ocorrer diretamente após a confirmação
+ou depois do ateste; quando houver ateste prévio, ele permanece preservado.
 
 O ledger deve distinguir comprometimento da OS de comprometimento de OF. A
 restituição de glosa deve possuir movimento próprio, manter referência à OS e
@@ -542,6 +551,12 @@ vinculados. Todos os alvos recebidos devem ser validados antes da gravação; a
 operação é atômica e não permite estratégia parcial. A emissão do atendimento
 congela as estratégias; alteração posterior exige cancelamento e novo
 atendimento.
+
+O Command de confirmação deve aceitar somente OS `EXECUTADA`, impedir uma
+segunda confirmação, validar a Entidade da evidência contra a Entidade da OS
+e gravar fato, auditoria e Outbox atomicamente. O ateste e a glosa devem exigir
+esse fato persistido; a glosa não deve exigir ateste prévio quando registrada
+diretamente após a confirmação.
 
 Commands de autorização, vínculo de alvos e definição de estratégia devem
 respeitar escopo e Membership, registrar auditoria e Outbox quando houver fato
