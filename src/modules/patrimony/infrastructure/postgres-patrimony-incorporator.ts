@@ -265,8 +265,8 @@ export class PostgresPatrimonyIncorporator implements PatrimonyIncorporator {
         await client.query(
           `insert into "patrimony" (
             "id", "material_singular_id", "responsible_entity_id",
-            "source_delivery_id", "source_shipment_item_id", "incorporated_at", "updated_at"
-          ) values ($1, $2, $3, $4, $5, $6, current_timestamp)`,
+            "origin", "source_delivery_id", "source_shipment_item_id", "incorporated_at", "updated_at"
+          ) values ($1, $2, $3, 'ENTREGA', $4, $5, $6, current_timestamp)`,
           [
             patrimonyId,
             item.material_singular_id,

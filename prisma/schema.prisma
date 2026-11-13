@@ -146,6 +146,24 @@ enum PatrimonyOperationalState {
   BAIXADO
 }
 
+enum PatrimonyOriginType {
+  ENTREGA
+  SUBSTITUICAO_EM_GARANTIA
+}
+
+enum PatrimonyClosureReason {
+  SUBSTITUICAO_EM_GARANTIA
+}
+
+enum PatrimonyWarrantyEvidenceType {
+  LAUDO
+  DOCUMENTO_ASSISTENCIA
+  COMPROVANTE_ORDEM_FORNECEDOR
+  EMAIL_FORMAL
+  DOCUMENTO_SEI
+  OUTRO
+}
+
 enum PatrimonyWriteOffReason {
   INSERVIBILIDADE
   FURTO
@@ -285,6 +303,9 @@ model UserAccount {
   maintenanceRequestReportsIssued     MaintenanceRequestPatrimonyReport[]         @relation("MaintenanceRequestPatrimonyReportIssuedBy")
   maintenanceServiceOrdersIssued      MaintenanceServiceOrder[]                   @relation("MaintenanceServiceOrderIssuedBy")
   serviceOrderEntityConfirmations     MaintenanceServiceOrderEntityConfirmation[] @relation("MaintenanceServiceOrderEntityConfirmationRegisteredBy")
+  patrimonyClosures                   Patrimony[]                                 @relation("PatrimonyClosedBy")
+  warrantyReplacementsAuthorized      PatrimonyWarrantyReplacement[]              @relation("PatrimonyWarrantyReplacementAuthorizedBy")
+  warrantyReplacementsExecuted        PatrimonyWarrantyReplacement[]              @relation("PatrimonyWarrantyReplacementExecutedBy")
 
   @@index([personId])
   @@map("user_account")
@@ -1014,27 +1035,28 @@ model StockReturn {
 }
 
 model MaintenanceRequest {
-  id                  String                                @id @default(uuid()) @db.Uuid
-  requestingEntityId  String                                @map("requesting_entity_id") @db.Uuid
-  status              MaintenanceRequestStatus              @default(REGISTRADA)
-  summary             String                                @db.VarChar(500)
-  description         String                                @db.Text
-  requestedAt         DateTime                              @map("requested_at")
-  registeredByUserId  String?                               @map("registered_by_user_id") @db.Uuid
-  authorizedAt        DateTime?                             @map("authorized_at")
-  authorizedByUserId  String?                               @map("authorized_by_user_id") @db.Uuid
-  authorizationReason String?                               @map("authorization_reason") @db.VarChar(1000)
-  version             Int                                   @default(1)
-  correlationId       String                                @map("correlation_id") @db.VarChar(160)
-  createdAt           DateTime                              @default(now()) @map("created_at")
-  updatedAt           DateTime                              @updatedAt @map("updated_at")
-  requestingEntity    Entity                                @relation(fields: [requestingEntityId], references: [id], onDelete: Restrict)
-  registeredByUser    UserAccount?                          @relation(fields: [registeredByUserId], references: [id], onDelete: Restrict)
-  authorizedByUser    UserAccount?                          @relation("MaintenanceRequestAuthorizedBy", fields: [authorizedByUserId], references: [id], onDelete: Restrict)
-  references          MaintenanceRequestReference[]
-  patrimonyTargets    MaintenanceRequestPatrimonyTarget[]
-  patrimonyStrategies MaintenanceRequestPatrimonyStrategy[]
-  serviceOrders       MaintenanceServiceOrder[]
+  id                   String                                @id @default(uuid()) @db.Uuid
+  requestingEntityId   String                                @map("requesting_entity_id") @db.Uuid
+  status               MaintenanceRequestStatus              @default(REGISTRADA)
+  summary              String                                @db.VarChar(500)
+  description          String                                @db.Text
+  requestedAt          DateTime                              @map("requested_at")
+  registeredByUserId   String?                               @map("registered_by_user_id") @db.Uuid
+  authorizedAt         DateTime?                             @map("authorized_at")
+  authorizedByUserId   String?                               @map("authorized_by_user_id") @db.Uuid
+  authorizationReason  String?                               @map("authorization_reason") @db.VarChar(1000)
+  version              Int                                   @default(1)
+  correlationId        String                                @map("correlation_id") @db.VarChar(160)
+  createdAt            DateTime                              @default(now()) @map("created_at")
+  updatedAt            DateTime                              @updatedAt @map("updated_at")
+  requestingEntity     Entity                                @relation(fields: [requestingEntityId], references: [id], onDelete: Restrict)
+  registeredByUser     UserAccount?                          @relation(fields: [registeredByUserId], references: [id], onDelete: Restrict)
+  authorizedByUser     UserAccount?                          @relation("MaintenanceRequestAuthorizedBy", fields: [authorizedByUserId], references: [id], onDelete: Restrict)
+  references           MaintenanceRequestReference[]
+  patrimonyTargets     MaintenanceRequestPatrimonyTarget[]
+  patrimonyStrategies  MaintenanceRequestPatrimonyStrategy[]
+  serviceOrders        MaintenanceServiceOrder[]
+  warrantyReplacements PatrimonyWarrantyReplacement[]
 
   @@index([requestingEntityId])
   @@index([status])
@@ -1341,6 +1363,11 @@ model Patrimony {
   materialSingularId             String                                @map("material_singular_id") @db.Uuid
   responsibleEntityId            String                                @map("responsible_entity_id") @db.Uuid
   operationalState               PatrimonyOperationalState             @default(EM_USO) @map("operational_state")
+  serialNumber                   String?                               @map("serial_number") @db.VarChar(180)
+  origin                         PatrimonyOriginType?                  @map("origin")
+  closedAt                       DateTime?                             @map("closed_at")
+  closureReason                  PatrimonyClosureReason?               @map("closure_reason")
+  closedByUserId                 String?                               @map("closed_by_user_id") @db.Uuid
   sourceDeliveryId               String?                               @map("source_delivery_id") @db.Uuid
   sourceShipmentItemId           String?                               @map("source_shipment_item_id") @db.Uuid
   incorporatedAt                 DateTime?                             @map("incorporated_at")
@@ -1349,6 +1376,7 @@ model Patrimony {
   updatedAt                      DateTime                              @updatedAt @map("updated_at")
   materialSingular               MaterialSingular                      @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
   responsibleEntity              Entity                                @relation(fields: [responsibleEntityId], references: [id], onDelete: Restrict)
+  closedByUser                   UserAccount?                          @relation("PatrimonyClosedBy", fields: [closedByUserId], references: [id], onDelete: Restrict)
   sourceDelivery                 LogisticsDelivery?                    @relation(fields: [sourceDeliveryId], references: [id], onDelete: Restrict)
   sourceShipmentItem             LogisticsShipmentItem?                @relation(fields: [sourceShipmentItemId], references: [id], onDelete: Restrict)
   tombos                         PatrimonyTombo[]
@@ -1359,6 +1387,8 @@ model Patrimony {
   maintenanceServiceOrderTargets MaintenanceServiceOrderPatrimony[]
   maintenanceRequestTargets      MaintenanceRequestPatrimonyTarget[]
   maintenanceRequestStrategies   MaintenanceRequestPatrimonyStrategy[]
+  warrantyReplacementsFrom       PatrimonyWarrantyReplacement[]        @relation("PatrimonyWarrantyReplacementPrevious")
+  warrantyReplacementsTo         PatrimonyWarrantyReplacement[]        @relation("PatrimonyWarrantyReplacementReplacement")
 
   @@index([materialSingularId])
   @@index([responsibleEntityId])
@@ -1366,7 +1396,54 @@ model Patrimony {
   @@index([sourceDeliveryId])
   @@index([sourceShipmentItemId])
   @@index([incorporatedAt])
+  @@index([origin])
+  @@index([closedAt])
+  @@index([closureReason])
+  @@index([closedByUserId])
   @@map("patrimony")
+}
+
+model PatrimonyWarrantyReplacement {
+  id                     String                                 @id @default(uuid()) @db.Uuid
+  previousPatrimonyId    String                                 @unique @map("previous_patrimony_id") @db.Uuid
+  replacementPatrimonyId String                                 @unique @map("replacement_patrimony_id") @db.Uuid
+  maintenanceRequestId   String                                 @map("maintenance_request_id") @db.Uuid
+  authorizedByUserId     String                                 @map("authorized_by_user_id") @db.Uuid
+  authorizedAt           DateTime                               @map("authorized_at")
+  executedByUserId       String                                 @map("executed_by_user_id") @db.Uuid
+  occurredAt             DateTime                               @map("occurred_at")
+  warrantyReference      String                                 @map("warranty_reference") @db.VarChar(500)
+  serialNumber           String?                                @map("serial_number") @db.VarChar(180)
+  justification          String                                 @db.VarChar(1000)
+  correlationId          String                                 @map("correlation_id") @db.VarChar(160)
+  createdAt              DateTime                               @default(now()) @map("created_at")
+  updatedAt              DateTime                               @updatedAt @map("updated_at")
+  previousPatrimony      Patrimony                              @relation("PatrimonyWarrantyReplacementPrevious", fields: [previousPatrimonyId], references: [id], onDelete: Restrict)
+  replacementPatrimony   Patrimony                              @relation("PatrimonyWarrantyReplacementReplacement", fields: [replacementPatrimonyId], references: [id], onDelete: Restrict)
+  maintenanceRequest     MaintenanceRequest                     @relation(fields: [maintenanceRequestId], references: [id], onDelete: Restrict)
+  authorizedByUser       UserAccount                            @relation("PatrimonyWarrantyReplacementAuthorizedBy", fields: [authorizedByUserId], references: [id], onDelete: Restrict)
+  executedByUser         UserAccount                            @relation("PatrimonyWarrantyReplacementExecutedBy", fields: [executedByUserId], references: [id], onDelete: Restrict)
+  evidences              PatrimonyWarrantyReplacementEvidence[]
+
+  @@index([maintenanceRequestId])
+  @@index([authorizedByUserId])
+  @@index([executedByUserId])
+  @@index([occurredAt])
+  @@map("patrimony_warranty_replacement")
+}
+
+model PatrimonyWarrantyReplacementEvidence {
+  id            String                        @id @default(uuid()) @db.Uuid
+  replacementId String                        @map("replacement_id") @db.Uuid
+  evidenceType  PatrimonyWarrantyEvidenceType @map("evidence_type")
+  reference     String                        @db.VarChar(500)
+  createdAt     DateTime                      @default(now()) @map("created_at")
+  updatedAt     DateTime                      @updatedAt @map("updated_at")
+  replacement   PatrimonyWarrantyReplacement  @relation(fields: [replacementId], references: [id], onDelete: Restrict)
+
+  @@index([replacementId])
+  @@index([evidenceType])
+  @@map("patrimony_warranty_replacement_evidence")
 }
 
 model PatrimonyWriteOff {
