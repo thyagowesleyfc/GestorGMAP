@@ -2,8 +2,8 @@
 
 ## Documento arquitetural permanente
 
-Este documento detalha os casos de uso de Manutenção que aparecem na Fase 7,
-mas ainda não possuem especificação suficiente para implementação segura.
+Este documento detalha os casos de uso de Manutenção que aparecem na Fase 7 e
+consolida as decisões necessárias para implementação segura.
 Ele complementa, sem substituir, `01-dominio-consolidado.md`,
 `02-especificacao-tecnica-consolidada.md`, `03-plano-implementacao.md` e
 `04-fases-implementacao.md`.
@@ -12,8 +12,8 @@ O documento separa explicitamente:
 
 - decisões já estabelecidas pelo domínio, que devem ser formalizadas na
   implementação;
-- decisões ainda abertas, que não devem ser escolhidas pelo agente ou pelo
-  implementador sem manifestação do responsável pelo domínio.
+- eventuais decisões ainda abertas, que não devem ser escolhidas pelo agente ou
+  pelo implementador sem manifestação do responsável pelo domínio.
 
 Nenhuma seção deste documento autoriza, por si só, a criação de código,
 migration ou endpoint. A implementação só começa depois de fechadas as
@@ -57,18 +57,24 @@ Já está decidido que:
 - o Patrimônio antigo não é transformado no novo Patrimônio;
 - o Patrimônio antigo encerra seu ciclo;
 - o encerramento possui motivo equivalente a `SUBSTITUICAO_EM_GARANTIA`;
-- um novo Patrimônio é criado ou vinculado como unidade física substituta,
-  com origem de incorporação decorrente de `SUBSTITUICAO_EM_GARANTIA`, e não
-  como nova aquisição contratual ordinária;
+- um novo Patrimônio é criado pelo próprio Command, dentro da mesma transação,
+  como unidade física substituta, com origem de incorporação decorrente de
+  `SUBSTITUICAO_EM_GARANTIA`, e não como nova aquisição contratual ordinária;
 - o novo Patrimônio recebe novos Tombos quando for tombável;
 - Tombos antigos não migram para a unidade substituta;
 - Tombo nunca é reutilizado;
 - deve existir vínculo histórico navegável entre Patrimônio antigo e substituto;
+- a navegação histórica deve funcionar do Patrimônio anterior para o substituto
+  e do substituto para o Patrimônio anterior;
 - a origem da nova unidade mantém referência explícita ao Patrimônio
   substituído, à Solicitação/fluxo de Manutenção, à ocorrência ou atendimento
   de garantia e aos documentos/evidências aplicáveis;
 - a operação não consome artificialmente saldo de Contrato de aquisição;
 - fatos históricos do Patrimônio antigo permanecem imutáveis;
+- deve existir pelo menos uma evidência formal anexada ou uma referência
+  externa formal. São aceitos Laudo, documento da assistência,
+  comprovante/ordem do fornecedor, e-mail formal, Documento SEI ou equivalente;
+- não há obrigatoriedade de um único tipo documental;
 - a identidade interna do Patrimônio é independente do Tombo;
 - permissão técnica não supera autorização ou invariante de negócio.
 
@@ -90,12 +96,13 @@ deve preservar essa intenção semântica.
 
 Registrar, como fato único e rastreável, que um Patrimônio foi substituído
 integralmente no contexto de uma Manutenção em garantia, encerrando a
-continuidade operacional do anterior, criando ou vinculando a unidade
-substituta e mantendo a relação histórica entre os dois.
+continuidade operacional do anterior, criando a unidade substituta e mantendo
+a relação histórica entre os dois.
 
 O Command não corrige o Patrimônio antigo, não copia seu Tombo, não apaga sua
 composição histórica e não simula uma compra ou um novo consumo do Contrato de
-aquisição.
+aquisição. O vínculo histórico resultante deve permitir navegação nos dois
+sentidos.
 
 ### 2.4 Ator, competência e relação com a Manutenção
 
@@ -103,15 +110,16 @@ O contexto operacional é Patrimônio/Manutenção. A operação deve exigir ses
 Usuário ativo, Membership e escopo compatíveis com o Patrimônio antigo e com a
 Solicitação relacionada.
 
-O executor é o Time PATRIMÔNIO, após autorização da GERÊNCIA. A operação não é
-automaticamente exclusiva do papel `LIDER`; continuam obrigatórios sessão,
+O executor é o Time PATRIMÔNIO, após a autorização da GERÊNCIA exigida pelo
+fluxo de Manutenção. A operação não é automaticamente exclusiva do papel
+`LIDER`; continuam obrigatórios sessão,
 Usuário ativo, Membership, escopo e a validação da autorização no backend e nas
 camadas de Application/Domain.
 
-A exigência de evidência formal específica para comprovar a ocorrência ou o
-atendimento de garantia permanece como decisão de negócio. A persistência do
-vínculo explícito, a criação do substituto pelo próprio Command e o limite da
-autorização da GERÊNCIA são decisões já fechadas.
+Deve existir pelo menos uma evidência formal anexada ou uma referência externa
+formal. Laudo, documento da assistência, comprovante/ordem do fornecedor,
+e-mail formal, Documento SEI ou equivalente são aceitos, sem preferência ou
+obrigatoriedade de um único tipo documental.
 
 ### 2.5 Pré-condições
 
@@ -123,18 +131,16 @@ Pré-condições derivadas das decisões já existentes:
 - existe uma Solicitação/fluxo de Manutenção relacionado;
 - existe referência à ocorrência ou ao atendimento de garantia que originou a
   substituição;
-- existe autorização da GERÊNCIA para a substituição;
+- a Solicitação de Manutenção está autorizada pela GERÊNCIA conforme o fluxo
+  existente, e a referência dessa autorização será vinculada ao fato;
 - o alvo do Patrimônio está vinculado à Solicitação;
 - a estratégia persistida para o alvo é `GARANTIA`;
 - o Patrimônio antigo ainda não foi encerrado por essa substituição;
 - o equipamento substituto ainda não foi incorporado por esta substituição;
 - os fatos históricos anteriores estão íntegros;
-- a operação possui chave de idempotência e `correlation_id`.
-
-Ainda requer decisão humana qual evidência formal comprova a ocorrência ou o
-atendimento de garantia: laudo, ateste técnico, aprovação externa, documento
-de garantia ou combinação desses fatos. A referência ao fato de garantia e a
-origem `SUBSTITUICAO_EM_GARANTIA`, porém, são obrigatórias e já decididas.
+- a operação possui chave de idempotência e `correlation_id`;
+- existe pelo menos uma evidência formal anexada ou uma referência externa
+  formal, sem exigir um tipo documental único.
 
 ### 2.6 Payload conceitual
 
@@ -152,7 +158,7 @@ Campos necessários ou candidatos:
 | número de série | condicional | identifica o equipamento quando o Material exigir |
 | dados de composição | condicional | descreve Kit/Composto e componentes |
 | justificativa | necessária | explica o fato e o encerramento |
-| evidências/documentos | condicional | comprova garantia ou reconhecimento técnico |
+| evidências/documentos | necessário | contém ao menos um anexo ou referência externa formal aplicável |
 | `occurred_at` | necessário | data do fato de substituição |
 | `correlation_id` | necessário | rastreabilidade transversal |
 | `idempotency_key` | necessário | retry sem duplicação |
@@ -171,8 +177,8 @@ atômica. O fluxo conceitual é:
 1. reservar a idempotência;
 2. bloquear o Patrimônio antigo e as relações de composição/Tombo relevantes;
 3. validar novamente a estratégia `GARANTIA`, a autorização e o estado atual;
-4. validar a evidência ou reconhecimento exigido, depois que essa decisão for
-   fechada;
+4. validar a existência de pelo menos uma evidência formal anexada ou
+   referência externa formal;
 5. encerrar o Patrimônio antigo com motivo
    `SUBSTITUICAO_EM_GARANTIA`, sem apagar seus fatos;
 6. encerrar os Tombos antigos quando aplicável, sem reutilizá-los;
@@ -180,7 +186,8 @@ atômica. O fluxo conceitual é:
    `SUBSTITUICAO_EM_GARANTIA`;
 8. criar novos Tombos quando a regra de tombabilidade exigir;
 9. registrar a relação histórica antigo → substituto e os vínculos com a
-   Solicitação/Manutenção, autorização, ocorrência de garantia e evidências;
+   Solicitação/Manutenção, autorização, ocorrência de garantia e evidências,
+   permitindo navegação nos dois sentidos;
 10. registrar ou associar a nova composição, preservando as versões anteriores;
 11. atualizar o fato de Manutenção que depende da substituição, se houver uma
     transição já definida;
@@ -215,6 +222,9 @@ menos:
 - executor do Time PATRIMÔNIO;
 - justificativa/evidência;
 - `correlation_id`.
+
+A persistência deve manter pelo menos uma evidência formal anexada ou uma
+referência externa formal. O modelo não deve exigir um tipo documental único.
 
 O nome da tabela/modelo e a possibilidade de reutilizar algum histórico
 existente dependem da inspeção final do modelo de Patrimônio e são decisões
@@ -330,9 +340,10 @@ POST /api/maintenance/patrimonies/{patrimonyId}/warranty-replacement
 POST /api/maintenance/service-orders/{serviceOrderId}/warranty-replacement
 ```
 
-A escolha depende da decisão sobre a origem do novo Patrimônio e sobre qual
-fato autoriza a substituição. O contrato OpenAPI deve ser criado somente depois
-da escolha do limite do Command.
+O contrato OpenAPI deve preservar o limite do Command, a criação transacional
+do substituto e a referência a pelo menos uma evidência formal. A escolha do
+caminho é uma decisão técnica de organização da API, não uma pendência de
+domínio.
 
 ## 3. Substituição de componente patrimonial
 
@@ -348,7 +359,27 @@ Já está decidido que:
 - componente tombável segue as regras de Patrimônio e Tombo;
 - Tombo nunca é reutilizado;
 - substituição é um fato formal, auditável e rastreável;
-- Kit/Composto não recebe edição retroativa da configuração histórica.
+- Kit/Composto não recebe edição retroativa da configuração histórica;
+- o Time PATRIMÔNIO executa a substituição;
+- `MEMBRO` pode preparar e executar; `LIDER` não é gate obrigatório por padrão;
+- Gerência autoriza quando houver alteração de identidade patrimonial, Tombo ou
+  composição estrutural relevante;
+- componente simples não tombável pode ser substituído sem nova autorização da
+  Gerência quando a operação já estiver coberta pela Manutenção autorizada;
+- toda substituição está vinculada a uma Manutenção;
+- a origem do componente substituto é `MANUTENCAO`;
+- o componente removido passa inicialmente à situação
+  `REMOVIDO_EM_MANUTENCAO`, sem baixa automática;
+- o destino posterior pode ser devolução ao fornecedor, recolhimento,
+  baixa/descarte, recondicionamento ou reutilização, conforme o fluxo aplicável;
+- Nota Fiscal não é obrigatória para origem `GARANTIA`, `UTD`, `CERME`,
+  `ESTOQUE_TECNICO` ou equivalente formalmente registrado;
+- componente tombável substituto é nova unidade física, com nova identidade e
+  novo Tombo; o componente removido preserva sua identidade e histórico e nunca
+  transfere seu Tombo;
+- componente não tombável preserva histórico suficiente para reconstruir a
+  alteração da composição;
+- Kit/Composto recebe nova versão da composição concreta do Patrimônio.
 
 ### 3.2 Command conceitual e intenção
 
@@ -368,11 +399,11 @@ fluxos diferentes.
 
 ### 3.3 Distinção obrigatória de casos
 
-| Caso | Efeito já definido | Decisão ainda necessária |
+| Caso | Efeito já definido | Tratamento implementável |
 |---|---|---|
-| Componente tombável | a nova unidade física possui nova identidade patrimonial e novo Tombo; o Tombo anterior não é reutilizado | como o componente anterior será tratado operacionalmente |
-| Componente não individualizado/não tombável | não recebe Tombo individual; o histórico preserva Material, identificação disponível, componente anterior/substituto, datas, motivo, Manutenção e evidências aplicáveis | nenhuma decisão adicional de conteúdo histórico neste documento |
-| Componente de Kit | a configuração histórica não é reescrita; a substituição cria nova versão da composição concreta do Patrimônio | nenhuma decisão adicional sobre reescrita da configuração histórica |
+| Componente tombável | a nova unidade física possui nova identidade patrimonial e novo Tombo; o Tombo anterior não é reutilizado; o componente removido permanece com sua identidade e histórico e passa inicialmente a `REMOVIDO_EM_MANUTENCAO` | registrar o fato e encaminhar o destino posterior para fluxo próprio |
+| Componente não individualizado/não tombável | não recebe Tombo individual; o histórico preserva Material, identificação disponível, componente anterior/substituto, datas, motivo, Manutenção e evidências aplicáveis | reconstruir a composição sem criar identidade patrimonial indevida |
+| Componente de Kit | a configuração histórica não é reescrita; a substituição cria nova versão da composição concreta do Patrimônio | aplicar a nova versão sem alterar o tipo/configuração histórica |
 
 Não se deve implementar os três casos com o mesmo efeito por conveniência.
 
@@ -383,6 +414,12 @@ escopo do Patrimônio. A substituição deve estar vinculada a uma Manutenção.
 Uma OS somente é obrigatória quando a estratégia ou modalidade de atendimento
 aplicável exigir OS.
 
+`MEMBRO` do Time PATRIMÔNIO pode preparar e executar. `LIDER` não é gate
+obrigatório por padrão. A Gerência deve autorizar a operação quando houver
+alteração de identidade patrimonial, Tombo ou composição estrutural relevante.
+Componente simples não tombável pode ser substituído sem nova autorização da
+Gerência quando a operação já estiver coberta pela Manutenção autorizada.
+
 Pré-condições já compatíveis com o domínio:
 
 - Patrimônio existe;
@@ -391,15 +428,9 @@ Pré-condições já compatíveis com o domínio:
 - linha/componente indicado pertence à composição vigente;
 - Material substituto é compatível com a Classe/configuração;
 - não há operação concorrente que tenha criado nova revisão desde a leitura;
-- fatos históricos anteriores estão preservados.
-
-Ainda requer decisão humana:
-
-- quem pode executar e se requer `LIDER` ou Gerência;
-- se o componente tombável anterior é encerrado, recolhido ou apenas deixa de
-  integrar a composição;
-- quais evidências adicionais são obrigatórias conforme a modalidade de
-  atendimento.
+- fatos históricos anteriores estão preservados;
+- a autorização da Gerência existe quando a operação alterar identidade,
+  Tombo ou composição estrutural relevante.
 
 A forma transacional de criação ou associação da nova unidade tombável é uma
 decisão técnica, desde que preserve a nova identidade patrimonial, gere novo
@@ -417,37 +448,48 @@ Campos candidatos:
 - referência da OS, quando a estratégia/modalidade exigir OS;
 - `componente_anterior_id` ou identificador da linha vigente;
 - Material Singular substituto;
+- origem do substituto, fixada em `MANUTENCAO`;
 - Patrimônio substituto, se já existente;
 - quantidade;
 - número de série, quando aplicável;
+- unidade/fornecedor, documento ou referência externa, quando disponíveis;
+- data e evidências aplicáveis, quando disponíveis;
 - justificativa e evidências;
 - `occurred_at`;
 - `correlation_id`;
 - `idempotency_key`.
 
-O payload final depende da decisão sobre componente individualizado, Kit e
-origem do substituto. Não aceitar simultaneamente campos mutuamente
-excludentes sem uma regra explícita.
+Nota Fiscal não é campo obrigatório para origem `GARANTIA`, `UTD`, `CERME`,
+`ESTOQUE_TECNICO` ou equivalente formalmente registrado.
+
+O payload deve refletir o tipo de componente, a origem fixa `MANUTENCAO`, a
+Manutenção relacionada e a exigência condicional de OS. Não aceitar
+simultaneamente campos mutuamente excludentes sem uma regra explícita.
 
 ### 3.6 Transação conceitual
 
 1. reservar idempotência;
 2. bloquear o Patrimônio, a composição vigente e o componente concreto quando
    houver;
-3. validar versão, autorização, compatibilidade e pré-condições;
+3. validar versão, autorização condicional da Gerência, compatibilidade e
+   pré-condições;
 4. criar nova revisão da composição, mantendo a revisão anterior;
 5. para componente tombável, criar a nova unidade patrimonial com identidade e
    Tombo novos, sem reutilizar o Tombo anterior;
-6. preservar a referência ao componente anterior e registrar seu efeito
-   operacional conforme a decisão humana;
-7. registrar o fato específico de substituição;
-8. registrar auditoria e Outbox necessárias;
-9. gravar resultado de idempotência;
-10. commit.
+6. preservar a referência ao componente anterior, sua identidade e seu Tombo
+   quando tombável, e registrar a situação inicial
+   `REMOVIDO_EM_MANUTENCAO`;
+7. registrar a origem `MANUTENCAO`, unidade/fornecedor, documento ou referência,
+   número de série, data e evidências quando disponíveis;
+8. registrar o fato específico de substituição;
+9. registrar auditoria e Outbox necessárias;
+10. gravar resultado de idempotência;
+11. commit.
 
 Qualquer falha deve reverter a nova revisão, o vínculo do componente, o Tombo
 novo e os fatos auxiliares. A revisão histórica anterior nunca deve ser
-alterada para desfazer a operação.
+alterada para desfazer a operação. O destino posterior do componente removido
+é tratado por fluxo próprio e não é decidido automaticamente por este Command.
 
 ### 3.7 Persistência, estado e histórico
 
@@ -461,6 +503,11 @@ conseguem, sem ambiguidade, registrar:
 - Material e identificação disponível quando o componente não for tombável;
 - motivo e data;
 - executor, referência da Manutenção e evidências aplicáveis.
+
+Para componente tombável, o histórico deve preservar o Patrimônio anterior,
+seu Tombo, o novo Patrimônio, o novo Tombo e a situação
+`REMOVIDO_EM_MANUTENCAO`. O destino posterior deve ser um fato separado, como
+devolução, recolhimento, baixa/descarte, recondicionamento ou reutilização.
 
 Se não conseguirem, deve ser criado um registro específico de substituição de
 componente. `AuditEntry` sozinho não substitui histórico semântico.
@@ -494,6 +541,11 @@ Testes necessários:
 - comportamento específico de Kit;
 - nova versão concreta da composição de Kit/Composto;
 - substituição in loco com Patrimônio `EM_USO`;
+- autorização da Gerência somente quando a alteração for patrimonial ou
+  estrutural relevante;
+- substituição de componente simples coberta por Manutenção já autorizada;
+- situação inicial `REMOVIDO_EM_MANUTENCAO` sem baixa automática;
+- origem `MANUTENCAO` e ausência de exigência artificial de Nota Fiscal;
 - autorização e escopo;
 - idempotência e concorrência;
 - rollback;
@@ -507,7 +559,8 @@ POST /api/maintenance/patrimonies/{patrimonyId}/component-replacement
 ```
 
 A rota deve refletir se a unidade é uma linha de composição ou um componente
-Patrimônio identificado. Essa decisão depende do payload final.
+Patrimônio identificado. Essa escolha é técnica e deve acompanhar o payload
+final do Command.
 
 ## 4. Plano de Manutenção Preventiva
 
@@ -518,7 +571,8 @@ Está definido que:
 - o plano inicialmente é manual;
 - a existência de possibilidade de manutenção preventiva no Material não é,
   sozinha, autorização para executar uma OS;
-- preventiva não gera automaticamente uma OS sem decisão de negócio;
+- preventiva não gera automaticamente uma OS; a emissão depende da análise do
+  Time PATRIMÔNIO e da aprovação da Gerência;
 - a operação pode ser trabalhada em lote pela interface;
 - uma OS pertence a uma única Entidade;
 - a OS preventiva exige aprovação da Gerência antes da emissão, inclusive
@@ -528,59 +582,110 @@ Está definido que:
 O catálogo já possui a capacidade de indicar se um Material permite manutenção
 preventiva, mas isso não define sozinho um Plano Preventivo.
 
-### 4.2 Modelo conceitual mínimo, sem fechar regras novas
+### 4.2 Modelo conceitual mínimo
 
-Para suportar uma implementação posterior, será necessário distinguir, no
-mínimo:
+Para suportar a implementação, o Plano Preventivo possui dois eixos
+explicitamente tipados e controlados.
 
-- `PlanoPreventivo`: definição manual e versionável da política;
-- alvo do plano: Material, Classe, Patrimônio ou Entidade, conforme decisão;
-- vigência e periodicidade;
-- ocorrência/previsão gerada pelo plano;
-- ação operacional que transforma uma previsão em Solicitação de Manutenção;
-- histórico de inclusão, suspensão, cancelamento, execução e reagendamento.
+#### Escopo territorial/institucional
 
-Ocorrências canceladas ou rejeitadas permanecem registradas no histórico. A
-geração e a execução de uma ocorrência preventiva devem usar a política
-transversal de `CommandId`/`Idempotency-Key` e proteção contra duplicação da
-mesma ocorrência lógica.
+O plano possui exatamente um modo territorial:
 
-Esses nomes são conceitos de análise, não nomes obrigatórios de tabelas ou
-Classes. A especificação não escolhe ainda o modelo final.
+```text
+TODAS
+GRE
+MUNICIPIO
+ENTIDADES_ESPECIFICAS
+```
 
-### 4.3 Pontos para decisão — Plano Preventivo
+`ENTIDADES_ESPECIFICAS` pode conter uma ou várias Entidades. Os identificadores
+selecionados devem ser persistidos como parte do escopo tipado; não substituir
+esse eixo por filtros livres ou uma linguagem genérica de regras.
 
-1. Quem cria e altera um plano: Patrimônio, Gerência, ambos com papéis
-   distintos ou outro time?
-2. Quem pode ativar, suspender e cancelar um plano?
-3. O escopo do plano pode ser Material Singular, Classe, Patrimônio,
-   Entidade ou combinação desses níveis?
-4. Um plano pode ter múltiplos escopos simultâneos? Em caso positivo, qual é a
-   precedência quando houver conflito?
-5. A periodicidade será intervalo fixo, calendário mensal/anual, leitura de
-   uso, contador físico ou outra modalidade?
-6. Qual fuso, calendário e tratamento de dias não úteis devem ser usados?
-7. A vigência possui início obrigatório, fim opcional ou ambos obrigatórios?
-8. Um Patrimônio incorporado depois da criação do plano entra automaticamente,
-   entra somente após revisão manual ou nunca entra?
-9. Quais estados permitem inclusão no plano: `EM_USO`, `RECOLHIDO`,
-   `EM_MANUTENCAO`? Patrimônio `BAIXADO` deve ser sempre excluído?
-10. O que acontece quando o Patrimônio já está em outra Manutenção preventiva
-    ou corretiva na data prevista?
-11. Suspensão pausa o calendário, cancela ocorrências futuras ou exige nova
-    vigência? O período suspenso é preservado?
-12. Reagendamento altera a ocorrência original, cria uma nova ocorrência ou
-    registra uma correção vinculada?
-13. A previsão é apenas um lembrete ou pode gerar uma Solicitação pré-preenchida
-    para confirmação manual?
-14. A decisão de criar a Solicitação ocorre por Patrimônio, por Entidade ou em
-    lote? Como se respeita a regra de uma Entidade por OS?
-15. Quais notificações são necessárias e quais são apenas projeções de leitura?
+#### Escopo patrimonial
 
-Nenhuma dessas respostas deve ser inferida somente da flag
-`allowsPreventiveMaintenance` ou da feature flag `MANUTENCAO_PREVENTIVA`.
+O plano possui exatamente um modo patrimonial:
 
-### 4.4 Testes previstos depois das decisões
+```text
+TODOS
+CLASSE
+MATERIAL
+PATRIMONIOS_ESPECIFICOS
+```
+
+Os modos `CLASSE`, `MATERIAL` e `PATRIMONIOS_ESPECIFICOS` mantêm as referências
+correspondentes. A combinação dos dois eixos permite, por exemplo, todos os
+aparelhos de uma Classe em uma GRE, um Material em um Município, uma Classe em
+Entidades específicas ou Patrimônios específicos.
+
+O plano possui `inicio_em` e `fim_em` opcional. Sem `fim_em`, permanece vigente
+até suspensão ou cancelamento.
+
+A periodicidade é composta por valor inteiro positivo e unidade:
+
+```text
+DIAS
+MESES
+ANOS
+```
+
+Exemplos: 90 dias, 6 meses ou 1 ano. Cron expression não é conceito de
+domínio; o scheduler técnico pode usar qualquer mecanismo interno compatível.
+
+Antes da ativação, o sistema deve verificar se existe outro Plano ativo cuja
+interseção territorial/institucional e patrimonial alcance os mesmos
+Patrimônios no mesmo período. Sobreposição conflitante impede a ativação,
+informa o Plano conflitante e exige correção do escopo ou suspensão/cancelamento
+do conflito. Não existe prioridade automática entre Planos.
+
+Quando um novo Patrimônio passar a satisfazer o escopo de um Plano ativo, ele
+entra automaticamente no universo elegível dos ciclos futuros. Essa inclusão
+não depende de Fiscalização, Inventário, PWA offline ou sincronização da
+Fiscalização.
+
+`EM_USO` é normalmente elegível. `ENCERRADO` e `BAIXADO` não são elegíveis.
+`EM_MANUTENCAO` e `RECOLHIDO` não descartam a ocorrência: ela deve ser adiada
+ou reavaliada, preservando o histórico.
+
+### 4.3 Commands e fluxo preventivo
+
+O Time PATRIMÔNIO cria, edita, suspende e cancela o Plano. A ativação exige
+autorização da Gerência. Os Commands conceituais são:
+
+- `CriarPlanoPreventivo`;
+- `AlterarPlanoPreventivo`;
+- `AtivarPlanoPreventivo`;
+- `SuspenderPlanoPreventivo`;
+- `CancelarPlanoPreventivo`;
+- `GerarOcorrenciaPreventiva`;
+- `ReagendarOcorrenciaPreventiva`.
+
+Uma ocorrência preventiva segue o fluxo:
+
+```text
+Plano Preventivo
+→ Ocorrência/Previsão Preventiva
+→ análise do Time PATRIMÔNIO
+→ aprovação da Gerência
+→ Solicitação/OS quando aplicável
+```
+
+O Plano nunca gera OS automaticamente. A ocorrência deve ser agrupada por
+Entidade e por ciclo e pode conter vários Patrimônios da mesma Entidade,
+preservando `1 OS = 1 Entidade`. A OS preventiva exige aprovação da Gerência
+antes da emissão, inclusive em operação em lote.
+
+Novos Patrimônios elegíveis entram automaticamente apenas nos ciclos futuros;
+essa entrada não reescreve ciclos já registrados.
+
+Reagendamento preserva data original, nova data, motivo obrigatório, autor,
+timestamps e histórico. Um reagendamento novo não sobrescreve o anterior.
+
+Ocorrências canceladas ou rejeitadas permanecem registradas. A geração e a
+execução preventiva usam `CommandId`/`Idempotency-Key` e proteção contra
+duplicação da mesma ocorrência lógica.
+
+### 4.4 Testes necessários
 
 - escopo e autorização de criação/alteração;
 - seleção de alvos por cada modalidade de plano;
@@ -592,11 +697,16 @@ Nenhuma dessas respostas deve ser inferida somente da flag
 - decisão manual de geração de Solicitação;
 - agrupamento sem cruzar Entidades;
 - histórico preservado de ocorrências canceladas e rejeitadas;
-- idempotência, concorrência e histórico.
+- idempotência, concorrência e histórico;
+- escopo territorial/institucional e patrimonial tipado;
+- bloqueio de sobreposição conflitante na ativação;
+- inclusão automática de Patrimônio em ciclos futuros;
+- adiamento/reavaliação para `EM_MANUTENCAO` e `RECOLHIDO`;
+- preservação integral de reagendamentos.
 
 ## 5. SLA de atendimento interno UTD/CERME
 
-### 5.1 Decisões já existentes
+### 5.1 Decisões consolidadas
 
 Está definido que:
 
@@ -607,16 +717,18 @@ Está definido que:
 - o GMAP pode acompanhar o atendimento sem transformar a unidade externa em
   um contexto IAM completo.
 
-Também está explicitamente aberto o SLA interno de UTD/CERME. Nenhum prazo
-numérico deve ser introduzido por implementação.
+O GMAP não é dono da política operacional de UTD ou CERME. `SlaPolicy`
+representa uma política/prazo definido institucionalmente ou externamente e
+cadastrado no GMAP para acompanhamento; não é uma política criada
+arbitrariamente pelo sistema.
 
-### 5.2 Modelo conceitual mínimo
+### 5.2 Modelo conceitual e regras de acompanhamento
 
 Antes de escolher prazos, o modelo precisa distinguir:
 
 - política de SLA aplicável;
 - obrigação/relógio de atendimento;
-- marcos observáveis, como aceite, início e conclusão;
+- o acompanhamento `SLA_ATENDIMENTO`, medindo encaminhamento até conclusão;
 - períodos de pausa e retomada;
 - vencimento calculado;
 - ocorrência de atraso e justificativa;
@@ -625,34 +737,74 @@ Antes de escolher prazos, o modelo precisa distinguir:
 
 O SLA é associado ao atendimento/encaminhamento da Manutenção para a unidade
 UTD ou CERME correspondente. Não é associado diretamente ao Patrimônio.
+Uma `SlaPolicy` pode considerar unidade e prioridade. Valores concretos não são
+hardcoded.
+
+Quando existe prazo formal cadastrado, o GMAP calcula o vencimento a partir do
+encaminhamento, aplica as pausas válidas e registra conclusão ou atraso. Sem
+prazo formal, acompanha tempo decorrido e produz métricas, mas não inventa
+vencimento nem classifica artificialmente o atendimento como atrasado.
+
 Políticas de SLA são versionadas; alterações posteriores não reescrevem o
-histórico nem as métricas dos atendimentos anteriores.
+vencimento histórico, as métricas históricas ou a interpretação de atendimentos
+anteriores.
+
+Na primeira versão não existem relógios separados para aceite, início ou
+execução. O relógio único é `SLA_ATENDIMENTO`.
+
+Quando houver política de prazo, consideram-se inicialmente dias úteis de
+segunda a sexta-feira. Calendário sofisticado de feriados fica fora da primeira
+versão, sem impedir evolução futura do modelo histórico.
+
+As pausas formais iniciais são:
+
+```text
+AGUARDANDO_ENTIDADE
+AGUARDANDO_PECA
+AGUARDANDO_FORNECEDOR
+```
+
+Cada pausa registra motivo, `iniciado_em`, `iniciado_por`, `finalizado_em` e
+`finalizado_por`. Como UTD/CERME não são usuários integrados inicialmente, o
+Time PATRIMÔNIO registra pausa e retomada no GMAP.
+
+Vencimento não altera automaticamente o estado da Manutenção. Produz indicador
+de atraso, alerta e notificação.
+
+Se o atendimento mudar de unidade ou estratégia, o SLA anterior é encerrado
+com motivo registrado e um novo encaminhamento cria novo acompanhamento/SLA.
+O histórico anterior não é apagado nem reescrito.
+
+UTD e CERME possuem configuração interna controlada de cobertura/competência:
+
+```text
+UnidadeAtendimento: UTD | CERME
+Cobertura: Classes atendidas e Materiais específicos atendidos, quando necessário
+```
+
+A sugestão de estratégia deve respeitar essa cobertura. Material ou Classe não
+atendido pela UTD, por exemplo, não pode receber sugestão UTD válida. Isso não
+é integração externa; é configuração interna da capacidade conhecida.
 
 O SLA deve ser uma camada de acompanhamento. Ele não deve alterar sozinho o
 estado de uma Solicitação ou OS sem um Command de negócio explícito.
 
-### 5.3 Pontos para decisão — SLA UTD/CERME
+### 5.3 Commands e fluxo de acompanhamento
 
-1. O relógio começa na definição da estratégia, na emissão da Solicitação, no
-   envio à unidade ou no aceite manual da UTD/CERME?
-2. Existem prazos separados para aceite, início, atendimento e conclusão?
-3. O SLA varia por prioridade, Classe, Material, tipo de atendimento ou
-   unidade? Qual é a precedência entre políticas?
-4. O prazo usa horas corridas, horas úteis ou calendário específico?
-5. Qual fuso e calendário de feriados se aplicam?
-6. Quais eventos pausam o relógio: aguardando peça, Entidade, fornecedor,
-   autorização ou outro motivo?
-7. Quem inicia, pausa, retoma e encerra o relógio quando não existe Usuário
-   UTD/CERME no sistema?
-8. A ausência de aceite é atraso, pendência manual ou apenas informação?
-9. O vencimento produz alerta, indicador, escalonamento ou transição de estado?
-10. Quem pode reagendar e qual justificativa/evidência é obrigatória?
-11. UTD e CERME compartilham a mesma política ou possuem políticas distintas?
-12. Qual é a regra para cancelamento, substituição de estratégia e encerramento
-    sem conclusão?
-13. Quais métricas e notificações são necessárias e quais ficam para Reporting?
+Os Commands/casos de uso conceituais são:
 
-### 5.4 Testes previstos depois das decisões
+- `RegistrarEncaminhamentoAtendimento`;
+- `PausarSlaAtendimento`;
+- `RetomarSlaAtendimento`;
+- `RegistrarConclusaoAtendimento`;
+- `MudarEstrategiaAtendimento`, que encerra o acompanhamento anterior com
+  motivo e cria novo acompanhamento para a unidade/estratégia substituta.
+
+O registro de encaminhamento deve validar a cobertura interna da unidade,
+associar a `SlaPolicy` vigente quando existir e criar o acompanhamento
+`SLA_ATENDIMENTO`. A conclusão fecha o acompanhamento e preserva o resultado.
+
+### 5.4 Testes necessários
 
 - aplicação correta da política;
 - cálculo de prazo com calendário definido;
@@ -662,7 +814,12 @@ estado de uma Solicitação ou OS sem um Command de negócio explícito.
 - ausência de integração externa;
 - idempotência de registros manuais;
 - concorrência em atualização do relógio;
-- projeções e métricas sem alterar o fato transacional.
+- projeções e métricas sem alterar o fato transacional;
+- acompanhamento sem prazo formal sem vencimento artificial;
+- versionamento de `SlaPolicy` sem alterar histórico;
+- cobertura de UTD/CERME por Classe e Material;
+- mudança de unidade/estratégia com encerramento e novo acompanhamento;
+- `SLA_ATENDIMENTO` sem relógios independentes de aceite/início/execução.
 
 ## 6. Relação conceitual com a API
 
@@ -680,14 +837,10 @@ POST /api/maintenance/preventive-plans/{planId}/occurrences/{occurrenceId}/reque
 O SLA pode ser exposto como atualização manual de acompanhamento ou como parte
 de uma tela de Manutenção; nenhuma rota é aprovada neste documento.
 
-Antes de fixar a API, deve-se fechar:
-
-- limite do Command;
-- recurso principal da operação;
-- formato de evidências/documentos;
-- `Idempotency-Key` e `correlation_id`;
-- códigos HTTP e erros de domínio;
-- contrato OpenAPI.
+Os contratos REST devem respeitar os limites dos Commands, os recursos
+principais, o formato de evidências/documentos, `Idempotency-Key`,
+`correlation_id`, os erros de domínio e o contrato OpenAPI. A escolha final de
+rotas e DTOs é decisão técnica derivada desta especificação.
 
 ## 7. Impacto previsto na implementação atual
 
@@ -696,14 +849,27 @@ posterior.
 
 ### Commands e Application
 
-Prováveis Commands novos:
+Commands/casos de uso necessários:
 
 - `SubstituirPatrimonioEmGarantia`;
 - `SubstituirComponentePatrimonial`;
-- Commands de criação, ativação, suspensão, cancelamento e ocorrência de
-  `PlanoPreventivo`, após as decisões humanas;
-- Commands de iniciar, pausar, retomar, reagendar e registrar marco de SLA,
-  após as decisões humanas.
+- `CriarPlanoPreventivo`;
+- `AlterarPlanoPreventivo`;
+- `AtivarPlanoPreventivo`;
+- `SuspenderPlanoPreventivo`;
+- `CancelarPlanoPreventivo`;
+- `GerarOcorrenciaPreventiva`;
+- `ReagendarOcorrenciaPreventiva`;
+- `RegistrarEncaminhamentoAtendimento`;
+- `PausarSlaAtendimento`;
+- `RetomarSlaAtendimento`;
+- `RegistrarConclusaoAtendimento`;
+- `MudarEstrategiaAtendimento`.
+
+A aprovação da Gerência para ativação do Plano e emissão da OS preventiva deve
+reutilizar o gate/Command de autorização do fato correspondente quando ele já
+existir. Não criar Commands ou eventos duplicados apenas para mudar o nome da
+operação.
 
 ### Aggregates e domínio
 
@@ -713,8 +879,10 @@ Prováveis áreas afetadas:
 - composição versionada de Patrimônio;
 - vínculo semântico entre Patrimônio antigo e substituto;
 - relação entre Manutenção, alvo e garantia;
-- novo agregado de Plano Preventivo, se aprovado;
-- novo conceito de relógio/política de SLA, se aprovado.
+- agregado de Plano Preventivo com os dois eixos de escopo;
+- ocorrência/previsão preventiva e seus ciclos;
+- acompanhamento `SLA_ATENDIMENTO`, pausas, políticas versionadas e cobertura
+  interna de UTD/CERME.
 
 ### Persistência e migrations
 
@@ -724,16 +892,17 @@ Provavelmente serão necessárias alterações para:
 - registrar motivo de encerramento sem confundi-lo automaticamente com Baixa;
 - registrar substituição de componente quando a composição atual não suportar
   todos os fatos necessários;
-- armazenar plano, alvo, vigência, ocorrência e histórico preventivo, caso o
-  modelo escolhido exija persistência própria;
-- armazenar política, marcos, pausas e justificativas de SLA, caso aprovados.
+- armazenar plano, os dois eixos de escopo, vigência, ocorrência e histórico
+  preventivo;
+- armazenar política versionada, marcos, pausas, encaminhamentos,
+  justificativas e cobertura de UTD/CERME.
 
 As migrations devem ser desenhadas somente após o fechamento das decisões de
 modelo e cardinalidade.
 
 ### API, eventos e testes
 
-Serão necessários, conforme o desenho aprovado:
+Serão necessários, conforme o desenho técnico:
 
 - handlers REST e contratos OpenAPI;
 - adapters PostgreSQL transacionais;
@@ -747,75 +916,18 @@ com escopo, campos e métrica definidos.
 
 ## 8. Matriz de maturidade da especificação
 
-| Item | Antes | Depois | Ainda requer decisão humana? |
-|---|---|---|---|
-| Substituição integral em garantia | Regra conceitual de criar novo Patrimônio/Tombo e preservar o antigo | Command, origem, autorização, executor, vínculos explícitos, criação transacional, invariantes, estado/motivo, idempotência, concorrência, eventos, erros e testes foram estruturados | Sim: qual evidência formal de garantia é obrigatória |
-| Substituição de componente | Distinção geral entre peça técnica e componente patrimonial | Manutenção obrigatória, OS condicional, casos tombável/não tombável/Kit, nova identidade/Tombo, revisão histórica e transação foram separados | Sim: competência/gate, tratamento operacional do componente anterior e evidências adicionais |
-| Plano Preventivo | Manual, sem OS automática; detalhes finais abertos | Modelo conceitual, aprovação da Gerência antes da OS, histórico de cancelamento/rejeição e idempotência foram formalizados | Sim: criação, escopo, periodicidade, vigência, inclusão, conflitos, suspensão, reagendamento, geração manual e notificações |
-| SLA UTD | Unidade externa, sem integração obrigatória; SLA aberto | Modelo de política/relógio/marcos, associação ao atendimento da unidade e versionamento histórico | Sim: marcos, prazos, calendários, pausas, responsáveis, atraso, reagendamento, política e métricas |
-| SLA CERME | Unidade externa, sem integração obrigatória; SLA aberto | Mesmo detalhamento, permitindo política própria ou compartilhada sem escolher uma delas | Sim: marcos, prazos, calendários, pausas, responsáveis, atraso, reagendamento, política e métricas |
+| Item | Antes | Depois | Implementável? | Pendência humana? |
+|---|---|---|---|---|
+| Substituição integral em garantia | Regra conceitual de criar novo Patrimônio/Tombo e preservar o antigo | Command, evidência formal, origem, autorização, executor, vínculos bidirecionais, criação transacional, invariantes, estado/motivo, idempotência, concorrência, eventos, erros e testes foram estruturados | Sim | Não |
+| Substituição de componente | Distinção geral entre peça técnica e componente patrimonial | Manutenção obrigatória, OS condicional, competência, autorização condicional, situação removida, destinos posteriores, origem, casos tombável/não tombável/Kit, revisão histórica e transação foram formalizados | Sim | Não |
+| Plano Preventivo | Manual, sem OS automática; escopo e ciclos abertos | Dois eixos tipados, bloqueio de sobreposição, periodicidade, vigência, elegibilidade, geração manual, agrupamento, aprovação, reagendamento, histórico e idempotência foram formalizados | Sim | Não |
+| SLA UTD | Unidade externa, sem integração obrigatória; SLA aberto | `SLA_ATENDIMENTO`, política cadastrada/versionada, cobertura, dias úteis iniciais, pausas, vencimento, alertas, mudança de unidade e histórico foram formalizados | Sim | Não |
+| SLA CERME | Unidade externa, sem integração obrigatória; SLA aberto | Mesmo modelo de acompanhamento, com cobertura interna e histórico sem integração externa | Sim | Não |
 
-## 9. Pontos que exigem decisão do responsável pelo domínio
+## 9. Estado das decisões de domínio
 
-As perguntas abaixo são as únicas decisões de negócio ainda pendentes neste
-documento. Elas não devem ser respondidas pelo agente ou pelo implementador.
-
-### A. Substituição de Patrimônio/Componente
-
-1. Qual evidência formal é obrigatória para comprovar a ocorrência ou o
-   atendimento de garantia?
-2. Quem pode executar a substituição de componente e qual gate de autorização é
-   exigido?
-3. Qual é o tratamento operacional do componente tombável anterior: encerrado,
-   recolhido ou apenas retirado da composição?
-4. Quais evidências adicionais são obrigatórias conforme a modalidade de
-   atendimento da substituição de componente?
-
-### B. Plano Preventivo
-
-1. Quem cria e altera um plano?
-2. Quem pode ativar, suspender e cancelar um plano?
-3. O escopo pode ser Material Singular, Classe, Patrimônio, Entidade ou
-   combinação desses níveis?
-4. Um plano pode ter múltiplos escopos? Qual precedência resolve conflitos?
-5. Qual periodicidade será usada: intervalo, calendário, leitura de uso,
-   contador físico ou outra modalidade?
-6. Qual fuso, calendário e tratamento de dias não úteis serão usados?
-7. A vigência terá início obrigatório, fim opcional ou ambos obrigatórios?
-8. Patrimônio incorporado depois entra automaticamente, após revisão manual ou
-   nunca entra?
-9. Quais estados permitem inclusão no plano? Patrimônio `BAIXADO` será sempre
-   excluído?
-10. O que acontece quando o Patrimônio já está em outra Manutenção na data
-    prevista?
-11. Suspensão pausa o calendário, cancela ocorrências futuras ou exige nova
-    vigência?
-12. Reagendamento altera a ocorrência original, cria outra ou registra correção
-    vinculada?
-13. A previsão será apenas lembrete ou poderá gerar Solicitação pré-preenchida
-    para confirmação manual?
-14. A Solicitação será criada por Patrimônio, Entidade ou lote, respeitando uma
-    única Entidade por OS?
-15. Quais notificações são necessárias e quais ficam apenas como projeções de
-    leitura?
-
-### C. SLA UTD/CERME
-
-1. Quando começa o relógio: estratégia, Solicitação, encaminhamento ou aceite?
-2. Existem prazos separados para aceite, início, atendimento e conclusão?
-3. O SLA varia por prioridade, Classe, Material, tipo de atendimento ou
-   unidade? Qual a precedência?
-4. O prazo usa horas corridas, horas úteis ou calendário específico?
-5. Qual fuso e calendário de feriados se aplicam?
-6. Quais eventos pausam o relógio?
-7. Quem inicia, pausa, retoma e encerra o relógio sem Usuário UTD/CERME?
-8. Ausência de aceite é atraso, pendência manual ou apenas informação?
-9. O vencimento produz alerta, indicador, escalonamento ou mudança de estado?
-10. Quem pode reagendar e qual justificativa/evidência é obrigatória?
-11. UTD e CERME compartilham a mesma política ou possuem políticas distintas?
-12. Qual regra vale para cancelamento, troca de estratégia e encerramento sem
-    conclusão?
-13. Quais métricas e notificações são necessárias e quais ficam para Reporting?
-
-Até essas decisões serem fechadas, não se deve tratar os itens como “prontos
-para implementação” apenas porque aparecem na lista de entregas da Fase 7.
+Não há decisão de negócio pendente identificada para os casos de uso
+detalhados neste documento. Os itens restantes são trabalho técnico de
+modelagem, persistência, locking, idempotência, Outbox, API, migrations,
+estrutura TypeScript e testes, a serem resolvidos durante a implementação sem
+reabrir as decisões de domínio consolidadas.

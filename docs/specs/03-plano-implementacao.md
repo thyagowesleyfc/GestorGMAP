@@ -219,10 +219,10 @@ Para feature de domínio rica:
 12. Docs/ADR se houve decisão nova
 ```
 
-Para os casos de uso de Manutenção detalhados em
-`docs/specs/06-casos-de-uso-manutencao.md`, a resolução das perguntas de
-domínio é pré-condição da etapa 3. Nenhum Command, migration ou contrato REST
-deve ser iniciado enquanto uma decisão humana necessária permanecer aberta.
+Para os casos de uso de Manutenção consolidados em
+`docs/specs/06-casos-de-uso-manutencao.md`, as decisões de domínio estão
+formalizadas. A etapa 3 deve decompor os Commands e casos de uso em incrementos
+curtos antes de criar migrations ou contratos REST.
 
 Não criar UI primeiro para depois tentar encaixar regras.
 

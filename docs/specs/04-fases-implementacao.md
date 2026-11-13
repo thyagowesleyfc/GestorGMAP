@@ -242,9 +242,9 @@ Fechar manutenção interna/externa, garantia e efeitos contratuais.
   garantia;
 - efeitos patrimoniais e contratuais.
 
-Itens com decisão humana aberta no documento 06 não são considerados prontos
-para implementação. A resolução dessas decisões é pré-condição para fechar o
-escopo técnico correspondente.
+As decisões de domínio desses casos de uso estão formalizadas no documento 06.
+O detalhamento técnico deve ser implementado em incrementos curtos, respeitando
+os gates, invariantes e checks desta fase.
 
 ### Gate
 
