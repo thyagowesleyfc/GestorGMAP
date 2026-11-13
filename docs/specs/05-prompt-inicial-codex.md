@@ -12,8 +12,9 @@ Antes de alterar qualquer código:
 3. leia docs/specs/02-especificacao-tecnica-consolidada.md;
 4. leia docs/specs/03-plano-implementacao.md;
 5. leia docs/specs/04-fases-implementacao.md;
-6. inspecione o estado atual do repositório e execute git status;
-7. identifique a primeira tarefa incompleta da fase atual.
+6. leia docs/specs/06-casos-de-uso-manutencao.md quando a tarefa envolver Manutenção;
+7. inspecione o estado atual do repositório e execute git status;
+8. identifique a primeira tarefa incompleta da fase atual.
 
 Trabalhe de forma incremental.
 

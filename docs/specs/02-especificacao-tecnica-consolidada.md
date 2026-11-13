@@ -568,6 +568,13 @@ testar um alvo, vários alvos com estratégia comum, vários alvos com estratég
 diferentes, alvo não vinculado, referência obrigatória de Contrato de Serviço,
 rollback e congelamento após emissão do atendimento.
 
+Os casos de uso de substituição de componente e substituição integral de
+Patrimônio, Plano Preventivo e SLA UTD/CERME que ainda exigem detalhamento estão
+organizados em
+`docs/specs/06-casos-de-uso-manutencao.md`. Este documento deve ser usado como
+complemento técnico antes de criar Commands, migrations ou contratos REST para
+esses casos.
+
 ---
 
 ## 17. Segurança web

@@ -236,11 +236,15 @@ Fechar manutenção interna/externa, garantia e efeitos contratuais.
 - OS;
 - ateste;
 - glosa;
-- SLA;
-- preventiva básica;
-- substituição de componente;
-- substituição integral em garantia;
+- detalhamento e implementação posterior dos casos de uso de Manutenção
+  conforme `docs/specs/06-casos-de-uso-manutencao.md`, incluindo SLA UTD/CERME,
+  Plano Preventivo, substituição de componente e substituição integral em
+  garantia;
 - efeitos patrimoniais e contratuais.
+
+Itens com decisão humana aberta no documento 06 não são considerados prontos
+para implementação. A resolução dessas decisões é pré-condição para fechar o
+escopo técnico correspondente.
 
 ### Gate
 

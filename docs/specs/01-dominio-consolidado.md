@@ -684,6 +684,12 @@ Peça técnica de manutenção não recebe identidade patrimonial. Componente pa
 
 Substituição integral encerra o Patrimônio antigo por substituição em garantia e cria novo Patrimônio com novos Tombos. Não há consumo artificial de Contrato de aquisição nem aumento líquido fictício.
 
+O detalhamento implementável dos casos de substituição, Plano Preventivo e SLA
+UTD/CERME está em `docs/specs/06-casos-de-uso-manutencao.md`. A origem
+`SUBSTITUICAO_EM_GARANTIA`, os vínculos históricos e a separação entre estado
+operacional e motivo de encerramento são decisões de domínio; a representação
+persistente e as políticas ainda abertas estão detalhadas no documento 06.
+
 ---
 
 ## 16. INSPECTION — Fiscalização Patrimonial
@@ -1154,6 +1160,8 @@ Essas são formas de implementação e não passam a fazer parte da linguagem ub
 
 ## 26. Pontos Abertos Não Bloqueantes
 
+- O detalhamento e as perguntas de decisão dos casos de uso pendentes de
+  Manutenção estão organizados em `docs/specs/06-casos-de-uso-manutencao.md`.
 - detalhes finais de Planos Preventivos;
 - SLA interno UTD/CERME;
 - assinatura formal de alguns documentos;
