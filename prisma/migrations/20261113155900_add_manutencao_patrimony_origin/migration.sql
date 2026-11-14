@@ -1,0 +1,1 @@
+ALTER TYPE "PatrimonyOriginType" ADD VALUE 'MANUTENCAO';

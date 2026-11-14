@@ -196,8 +196,15 @@ export class PostgresPatrimonyRemanejador implements PatrimonyRemanejador {
           where "patrimony_id" = $1
          union all
          select 1
-           from "patrimony_composition_item"
-          where "component_patrimony_id" = $1
+           from "patrimony_composition_item" pci
+           join "patrimony_composition" pc on pc."id" = pci."composition_id"
+          where pci."component_patrimony_id" = $1
+            and not exists (
+              select 1
+                from "patrimony_composition" newer
+               where newer."patrimony_id" = pc."patrimony_id"
+                 and newer."revision" > pc."revision"
+            )
        ) as "exists"`,
       [input.patrimonyId]
     );

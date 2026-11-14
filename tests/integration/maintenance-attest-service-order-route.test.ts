@@ -211,14 +211,8 @@ async function insertSession(client: Client, userId: string, token: string): Pro
   await client.query(
     `insert into "user_session" (
        "id", "user_id", "session_token_hash", "expires_at", "last_seen_at", "updated_at"
-     ) values ($1, $2, $3, $4, $5, current_timestamp)`,
-    [
-      randomUUID(),
-      userId,
-      hashSessionToken(token),
-      new Date("2026-11-14T00:00:00.000Z"),
-      new Date("2026-11-13T12:00:00.000Z")
-    ]
+     ) values ($1, $2, $3, current_timestamp + interval '1 day', current_timestamp, current_timestamp)`,
+    [randomUUID(), userId, hashSessionToken(token)]
   );
 }
 

@@ -149,6 +149,7 @@ enum PatrimonyOperationalState {
 enum PatrimonyOriginType {
   ENTREGA
   SUBSTITUICAO_EM_GARANTIA
+  MANUTENCAO
 }
 
 enum PatrimonyClosureReason {
@@ -162,6 +163,23 @@ enum PatrimonyWarrantyEvidenceType {
   EMAIL_FORMAL
   DOCUMENTO_SEI
   OUTRO
+}
+
+enum PatrimonyComponentEvidenceType {
+  LAUDO
+  DOCUMENTO_ASSISTENCIA
+  COMPROVANTE_ORDEM_FORNECEDOR
+  EMAIL_FORMAL
+  DOCUMENTO_SEI
+  OUTRO
+}
+
+enum PatrimonyComponentRemovedStatus {
+  REMOVIDO_EM_MANUTENCAO
+}
+
+enum PatrimonyComponentStatus {
+  REMOVIDO_EM_MANUTENCAO
 }
 
 enum PatrimonyWriteOffReason {
@@ -306,6 +324,7 @@ model UserAccount {
   patrimonyClosures                   Patrimony[]                                 @relation("PatrimonyClosedBy")
   warrantyReplacementsAuthorized      PatrimonyWarrantyReplacement[]              @relation("PatrimonyWarrantyReplacementAuthorizedBy")
   warrantyReplacementsExecuted        PatrimonyWarrantyReplacement[]              @relation("PatrimonyWarrantyReplacementExecutedBy")
+  componentReplacementsExecuted       PatrimonyComponentReplacement[]             @relation("PatrimonyComponentReplacementExecutedBy")
 
   @@index([personId])
   @@map("user_account")
@@ -488,6 +507,8 @@ model MaterialSingular {
   stockPositions              StockPosition[]
   patrimonies                 Patrimony[]
   patrimonyCompositionItems   PatrimonyCompositionItem[]
+  componentReplacementsFrom   PatrimonyComponentReplacement[]  @relation("PatrimonyComponentReplacementPreviousMaterial")
+  componentReplacementsTo     PatrimonyComponentReplacement[]  @relation("PatrimonyComponentReplacementReplacementMaterial")
 
   @@index([classId])
   @@index([controlType])
@@ -1035,28 +1056,29 @@ model StockReturn {
 }
 
 model MaintenanceRequest {
-  id                   String                                @id @default(uuid()) @db.Uuid
-  requestingEntityId   String                                @map("requesting_entity_id") @db.Uuid
-  status               MaintenanceRequestStatus              @default(REGISTRADA)
-  summary              String                                @db.VarChar(500)
-  description          String                                @db.Text
-  requestedAt          DateTime                              @map("requested_at")
-  registeredByUserId   String?                               @map("registered_by_user_id") @db.Uuid
-  authorizedAt         DateTime?                             @map("authorized_at")
-  authorizedByUserId   String?                               @map("authorized_by_user_id") @db.Uuid
-  authorizationReason  String?                               @map("authorization_reason") @db.VarChar(1000)
-  version              Int                                   @default(1)
-  correlationId        String                                @map("correlation_id") @db.VarChar(160)
-  createdAt            DateTime                              @default(now()) @map("created_at")
-  updatedAt            DateTime                              @updatedAt @map("updated_at")
-  requestingEntity     Entity                                @relation(fields: [requestingEntityId], references: [id], onDelete: Restrict)
-  registeredByUser     UserAccount?                          @relation(fields: [registeredByUserId], references: [id], onDelete: Restrict)
-  authorizedByUser     UserAccount?                          @relation("MaintenanceRequestAuthorizedBy", fields: [authorizedByUserId], references: [id], onDelete: Restrict)
-  references           MaintenanceRequestReference[]
-  patrimonyTargets     MaintenanceRequestPatrimonyTarget[]
-  patrimonyStrategies  MaintenanceRequestPatrimonyStrategy[]
-  serviceOrders        MaintenanceServiceOrder[]
-  warrantyReplacements PatrimonyWarrantyReplacement[]
+  id                    String                                @id @default(uuid()) @db.Uuid
+  requestingEntityId    String                                @map("requesting_entity_id") @db.Uuid
+  status                MaintenanceRequestStatus              @default(REGISTRADA)
+  summary               String                                @db.VarChar(500)
+  description           String                                @db.Text
+  requestedAt           DateTime                              @map("requested_at")
+  registeredByUserId    String?                               @map("registered_by_user_id") @db.Uuid
+  authorizedAt          DateTime?                             @map("authorized_at")
+  authorizedByUserId    String?                               @map("authorized_by_user_id") @db.Uuid
+  authorizationReason   String?                               @map("authorization_reason") @db.VarChar(1000)
+  version               Int                                   @default(1)
+  correlationId         String                                @map("correlation_id") @db.VarChar(160)
+  createdAt             DateTime                              @default(now()) @map("created_at")
+  updatedAt             DateTime                              @updatedAt @map("updated_at")
+  requestingEntity      Entity                                @relation(fields: [requestingEntityId], references: [id], onDelete: Restrict)
+  registeredByUser      UserAccount?                          @relation(fields: [registeredByUserId], references: [id], onDelete: Restrict)
+  authorizedByUser      UserAccount?                          @relation("MaintenanceRequestAuthorizedBy", fields: [authorizedByUserId], references: [id], onDelete: Restrict)
+  references            MaintenanceRequestReference[]
+  patrimonyTargets      MaintenanceRequestPatrimonyTarget[]
+  patrimonyStrategies   MaintenanceRequestPatrimonyStrategy[]
+  serviceOrders         MaintenanceServiceOrder[]
+  warrantyReplacements  PatrimonyWarrantyReplacement[]
+  componentReplacements PatrimonyComponentReplacement[]
 
   @@index([requestingEntityId])
   @@index([status])
@@ -1364,6 +1386,7 @@ model Patrimony {
   responsibleEntityId            String                                @map("responsible_entity_id") @db.Uuid
   operationalState               PatrimonyOperationalState             @default(EM_USO) @map("operational_state")
   serialNumber                   String?                               @map("serial_number") @db.VarChar(180)
+  componentStatus                PatrimonyComponentStatus?             @map("component_status")
   origin                         PatrimonyOriginType?                  @map("origin")
   closedAt                       DateTime?                             @map("closed_at")
   closureReason                  PatrimonyClosureReason?               @map("closure_reason")
@@ -1389,10 +1412,14 @@ model Patrimony {
   maintenanceRequestStrategies   MaintenanceRequestPatrimonyStrategy[]
   warrantyReplacementsFrom       PatrimonyWarrantyReplacement[]        @relation("PatrimonyWarrantyReplacementPrevious")
   warrantyReplacementsTo         PatrimonyWarrantyReplacement[]        @relation("PatrimonyWarrantyReplacementReplacement")
+  componentReplacementsAsOwner   PatrimonyComponentReplacement[]       @relation("PatrimonyComponentReplacementOwner")
+  componentReplacementsFrom      PatrimonyComponentReplacement[]       @relation("PatrimonyComponentReplacementPreviousComponent")
+  componentReplacementsTo        PatrimonyComponentReplacement[]       @relation("PatrimonyComponentReplacementReplacementComponent")
 
   @@index([materialSingularId])
   @@index([responsibleEntityId])
   @@index([operationalState])
+  @@index([componentStatus])
   @@index([sourceDeliveryId])
   @@index([sourceShipmentItemId])
   @@index([incorporatedAt])
@@ -1488,19 +1515,21 @@ model PatrimonyMovement {
 }
 
 model PatrimonyComposition {
-  id                      String                     @id @default(uuid()) @db.Uuid
-  patrimonyId             String                     @map("patrimony_id") @db.Uuid
-  revision                Int
-  materialConfigurationId String                     @map("material_configuration_id") @db.Uuid
-  configurationCode       String                     @map("configuration_code") @db.VarChar(64)
-  configurationName       String                     @map("configuration_name") @db.VarChar(180)
-  configurationType       MaterialConfigurationType  @map("configuration_type")
-  recordedAt              DateTime                   @map("recorded_at")
-  createdAt               DateTime                   @default(now()) @map("created_at")
-  updatedAt               DateTime                   @updatedAt @map("updated_at")
-  patrimony               Patrimony                  @relation(fields: [patrimonyId], references: [id], onDelete: Restrict)
-  materialConfiguration   MaterialConfiguration      @relation(fields: [materialConfigurationId], references: [id], onDelete: Restrict)
-  items                   PatrimonyCompositionItem[]
+  id                        String                          @id @default(uuid()) @db.Uuid
+  patrimonyId               String                          @map("patrimony_id") @db.Uuid
+  revision                  Int
+  materialConfigurationId   String                          @map("material_configuration_id") @db.Uuid
+  configurationCode         String                          @map("configuration_code") @db.VarChar(64)
+  configurationName         String                          @map("configuration_name") @db.VarChar(180)
+  configurationType         MaterialConfigurationType       @map("configuration_type")
+  recordedAt                DateTime                        @map("recorded_at")
+  createdAt                 DateTime                        @default(now()) @map("created_at")
+  updatedAt                 DateTime                        @updatedAt @map("updated_at")
+  patrimony                 Patrimony                       @relation(fields: [patrimonyId], references: [id], onDelete: Restrict)
+  materialConfiguration     MaterialConfiguration           @relation(fields: [materialConfigurationId], references: [id], onDelete: Restrict)
+  items                     PatrimonyCompositionItem[]
+  componentReplacementsFrom PatrimonyComponentReplacement[] @relation("PatrimonyComponentReplacementPreviousComposition")
+  componentReplacementsTo   PatrimonyComponentReplacement[] @relation("PatrimonyComponentReplacementReplacementComposition")
 
   @@unique([patrimonyId, revision], map: "patrimony_composition_patrimony_revision_key")
   @@index([materialConfigurationId])
@@ -1509,27 +1538,89 @@ model PatrimonyComposition {
 }
 
 model PatrimonyCompositionItem {
-  id                   String               @id @default(uuid()) @db.Uuid
-  compositionId        String               @map("composition_id") @db.Uuid
-  lineNumber           Int                  @map("line_number")
-  materialSingularId   String               @map("material_singular_id") @db.Uuid
-  componentPatrimonyId String?              @map("component_patrimony_id") @db.Uuid
-  quantity             Int
-  materialCode         String               @map("material_code") @db.VarChar(64)
-  materialName         String               @map("material_name") @db.VarChar(180)
-  isTombable           Boolean              @map("is_tombable")
-  patrimonialGroupCode String?              @map("patrimonial_group_code") @db.VarChar(64)
-  createdAt            DateTime             @default(now()) @map("created_at")
-  updatedAt            DateTime             @updatedAt @map("updated_at")
-  composition          PatrimonyComposition @relation(fields: [compositionId], references: [id], onDelete: Restrict)
-  materialSingular     MaterialSingular     @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
-  componentPatrimony   Patrimony?           @relation("PatrimonyCompositionComponent", fields: [componentPatrimonyId], references: [id], onDelete: Restrict)
+  id                    String                          @id @default(uuid()) @db.Uuid
+  compositionId         String                          @map("composition_id") @db.Uuid
+  lineNumber            Int                             @map("line_number")
+  materialSingularId    String                          @map("material_singular_id") @db.Uuid
+  componentPatrimonyId  String?                         @map("component_patrimony_id") @db.Uuid
+  quantity              Int
+  materialCode          String                          @map("material_code") @db.VarChar(64)
+  materialName          String                          @map("material_name") @db.VarChar(180)
+  isTombable            Boolean                         @map("is_tombable")
+  patrimonialGroupCode  String?                         @map("patrimonial_group_code") @db.VarChar(64)
+  createdAt             DateTime                        @default(now()) @map("created_at")
+  updatedAt             DateTime                        @updatedAt @map("updated_at")
+  composition           PatrimonyComposition            @relation(fields: [compositionId], references: [id], onDelete: Restrict)
+  materialSingular      MaterialSingular                @relation(fields: [materialSingularId], references: [id], onDelete: Restrict)
+  componentPatrimony    Patrimony?                      @relation("PatrimonyCompositionComponent", fields: [componentPatrimonyId], references: [id], onDelete: Restrict)
+  componentReplacements PatrimonyComponentReplacement[] @relation("PatrimonyComponentReplacementPreviousItem")
 
   @@unique([compositionId, lineNumber], map: "patrimony_composition_item_composition_line_key")
   @@unique([compositionId, materialSingularId], map: "patrimony_composition_item_composition_material_key")
   @@index([materialSingularId])
   @@index([componentPatrimonyId])
   @@map("patrimony_composition_item")
+}
+
+model PatrimonyComponentReplacement {
+  id                              String                                  @id @default(uuid()) @db.Uuid
+  patrimonyId                     String                                  @map("patrimony_id") @db.Uuid
+  maintenanceRequestId            String                                  @map("maintenance_request_id") @db.Uuid
+  previousCompositionId           String                                  @map("previous_composition_id") @db.Uuid
+  replacementCompositionId        String                                  @map("replacement_composition_id") @db.Uuid
+  previousCompositionItemId       String                                  @map("previous_composition_item_id") @db.Uuid
+  previousComponentPatrimonyId    String?                                 @map("previous_component_patrimony_id") @db.Uuid
+  replacementComponentPatrimonyId String?                                 @map("replacement_component_patrimony_id") @db.Uuid
+  previousMaterialSingularId      String                                  @map("previous_material_singular_id") @db.Uuid
+  replacementMaterialSingularId   String                                  @map("replacement_material_singular_id") @db.Uuid
+  replacementOrigin               PatrimonyOriginType                     @default(MANUTENCAO) @map("replacement_origin")
+  removedStatus                   PatrimonyComponentRemovedStatus         @map("removed_status")
+  previousIdentification          String?                                 @map("previous_identification") @db.VarChar(180)
+  replacementIdentification       String?                                 @map("replacement_identification") @db.VarChar(180)
+  serviceUnitReference            String?                                 @map("service_unit_reference") @db.VarChar(180)
+  supplierReference               String?                                 @map("supplier_reference") @db.VarChar(180)
+  documentReference               String?                                 @map("document_reference") @db.VarChar(500)
+  occurredAt                      DateTime                                @map("occurred_at")
+  justification                   String                                  @db.VarChar(1000)
+  executedByUserId                String                                  @map("executed_by_user_id") @db.Uuid
+  correlationId                   String                                  @map("correlation_id") @db.VarChar(160)
+  createdAt                       DateTime                                @default(now()) @map("created_at")
+  updatedAt                       DateTime                                @updatedAt @map("updated_at")
+  patrimony                       Patrimony                               @relation("PatrimonyComponentReplacementOwner", fields: [patrimonyId], references: [id], onDelete: Restrict)
+  maintenanceRequest              MaintenanceRequest                      @relation(fields: [maintenanceRequestId], references: [id], onDelete: Restrict)
+  previousComposition             PatrimonyComposition                    @relation("PatrimonyComponentReplacementPreviousComposition", fields: [previousCompositionId], references: [id], onDelete: Restrict)
+  replacementComposition          PatrimonyComposition                    @relation("PatrimonyComponentReplacementReplacementComposition", fields: [replacementCompositionId], references: [id], onDelete: Restrict)
+  previousCompositionItem         PatrimonyCompositionItem                @relation("PatrimonyComponentReplacementPreviousItem", fields: [previousCompositionItemId], references: [id], onDelete: Restrict)
+  previousComponentPatrimony      Patrimony?                              @relation("PatrimonyComponentReplacementPreviousComponent", fields: [previousComponentPatrimonyId], references: [id], onDelete: Restrict)
+  replacementComponentPatrimony   Patrimony?                              @relation("PatrimonyComponentReplacementReplacementComponent", fields: [replacementComponentPatrimonyId], references: [id], onDelete: Restrict)
+  previousMaterialSingular        MaterialSingular                        @relation("PatrimonyComponentReplacementPreviousMaterial", fields: [previousMaterialSingularId], references: [id], onDelete: Restrict)
+  replacementMaterialSingular     MaterialSingular                        @relation("PatrimonyComponentReplacementReplacementMaterial", fields: [replacementMaterialSingularId], references: [id], onDelete: Restrict)
+  executedByUser                  UserAccount                             @relation("PatrimonyComponentReplacementExecutedBy", fields: [executedByUserId], references: [id], onDelete: Restrict)
+  evidences                       PatrimonyComponentReplacementEvidence[]
+
+  @@index([patrimonyId, occurredAt])
+  @@index([maintenanceRequestId])
+  @@index([previousCompositionId])
+  @@index([replacementCompositionId])
+  @@index([previousCompositionItemId])
+  @@index([previousComponentPatrimonyId])
+  @@index([replacementComponentPatrimonyId])
+  @@index([executedByUserId])
+  @@map("patrimony_component_replacement")
+}
+
+model PatrimonyComponentReplacementEvidence {
+  id            String                         @id @default(uuid()) @db.Uuid
+  replacementId String                         @map("replacement_id") @db.Uuid
+  evidenceType  PatrimonyComponentEvidenceType @map("evidence_type")
+  reference     String                         @db.VarChar(500)
+  createdAt     DateTime                       @default(now()) @map("created_at")
+  updatedAt     DateTime                       @updatedAt @map("updated_at")
+  replacement   PatrimonyComponentReplacement  @relation(fields: [replacementId], references: [id], onDelete: Restrict)
+
+  @@index([replacementId])
+  @@index([evidenceType])
+  @@map("patrimony_component_replacement_evidence")
 }
 
 model PatrimonyTombo {
